@@ -1,0 +1,30 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: pet-1
+build:
+  artifacts:
+    - image: pet-1-backend
+      context: backend
+      docker:
+        dockerfile: Dockerfile
+    - image: pet-1-frontend
+      context: frontend
+      docker:
+        dockerfile: Dockerfile
+  local:
+    push: false
+manifests:
+  rawYaml:
+    - k8s/*.yaml
+deploy:
+  kubectl: {}
+portForward:
+  - resourceType: service
+    resourceName: frontend
+    port: 80
+    localPort: 3000
+  - resourceType: service
+    resourceName: backend
+    port: 80
+    localPort: 3001
