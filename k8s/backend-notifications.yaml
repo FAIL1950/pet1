@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
+  name: notifications
   labels:
-    app.kubernetes.io/name: backend
+    app.kubernetes.io/name: notifications
     app.kubernetes.io/part-of: pet-1
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: backend
+      app.kubernetes.io/name: notifications
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: backend
+        app.kubernetes.io/name: notifications
     spec:
       containers:
-        - name: backend
-          # Built from backend/Dockerfile (currently empty) via Skaffold; tag is set by the build pipeline.
-          image: pet-1-backend:latest
+        - name: notifications
+          # Built from backend/services/notifications/Dockerfile.dev via Skaffold; tag is set by the build pipeline.
+          image: pet-1-notifications:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -27,14 +27,14 @@ spec:
             - name: PORT
               value: "3000"
             - name: NODE_ENV
-              value: production
+              value: development
           resources:
             requests:
               cpu: 100m
-              memory: 128Mi
+              memory: 256Mi
             limits:
               cpu: 500m
-              memory: 256Mi
+              memory: 768Mi
           readinessProbe:
             httpGet:
               path: /
@@ -47,3 +47,19 @@ spec:
               port: http
             initialDelaySeconds: 15
             periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notifications
+  labels:
+    app.kubernetes.io/name: notifications
+    app.kubernetes.io/part-of: pet-1
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: notifications
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

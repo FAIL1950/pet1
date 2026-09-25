@@ -1,26 +1,36 @@
+/* MUI styles go into the `mui` layer (enableCssLayer in app/layout.tsx), so Tailwind utilities override them. */
+@layer theme, base, mui, components, utilities;
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* Follow MUI's color scheme class (set on <html> by InitColorSchemeScript) instead of prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+  /* MUI theme tokens exposed as Tailwind colors (bg-primary, text-text-secondary, ...). */
+  --color-primary: var(--mui-palette-primary-main);
+  --color-primary-light: var(--mui-palette-primary-light);
+  --color-primary-dark: var(--mui-palette-primary-dark);
+  --color-primary-contrast: var(--mui-palette-primary-contrastText);
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  --color-secondary: var(--mui-palette-secondary-main);
+  --color-secondary-light: var(--mui-palette-secondary-light);
+  --color-secondary-dark: var(--mui-palette-secondary-dark);
+  --color-secondary-contrast: var(--mui-palette-secondary-contrastText);
+
+  --color-error: var(--mui-palette-error-main);
+  --color-warning: var(--mui-palette-warning-main);
+  --color-info: var(--mui-palette-info-main);
+  --color-success: var(--mui-palette-success-main);
+
+  --color-text-primary: var(--mui-palette-text-primary);
+  --color-text-secondary: var(--mui-palette-text-secondary);
+  --color-text-disabled: var(--mui-palette-text-disabled);
+  --color-divider: var(--mui-palette-divider);
+
+  --color-background: var(--mui-palette-background-default);
+  --color-paper: var(--mui-palette-background-paper);
+  --color-foreground: var(--mui-palette-text-primary);
 }

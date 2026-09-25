@@ -4,10 +4,22 @@ metadata:
   name: pet-1
 build:
   artifacts:
-    - image: pet-1-backend
+    - image: pet-1-auth
       context: backend
       docker:
-        dockerfile: Dockerfile
+        dockerfile: services/auth/Dockerfile.dev
+    - image: pet-1-users
+      context: backend
+      docker:
+        dockerfile: services/users/Dockerfile.dev
+    - image: pet-1-boards
+      context: backend
+      docker:
+        dockerfile: services/boards/Dockerfile.dev
+    - image: pet-1-notifications
+      context: backend
+      docker:
+        dockerfile: services/notifications/Dockerfile.dev
     - image: pet-1-frontend
       context: frontend
       docker:
@@ -25,6 +37,18 @@ portForward:
     port: 80
     localPort: 3000
   - resourceType: service
-    resourceName: backend
+    resourceName: auth
     port: 80
     localPort: 3001
+  - resourceType: service
+    resourceName: users
+    port: 80
+    localPort: 3002
+  - resourceType: service
+    resourceName: boards
+    port: 80
+    localPort: 3003
+  - resourceType: service
+    resourceName: notifications
+    port: 80
+    localPort: 3004

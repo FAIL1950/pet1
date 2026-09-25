@@ -27,14 +27,14 @@ spec:
             - name: PORT
               value: "3000"
             - name: NODE_ENV
-              value: production
+              value: development
           resources:
             requests:
               cpu: 100m
-              memory: 128Mi
+              memory: 256Mi
             limits:
               cpu: 500m
-              memory: 256Mi
+              memory: 768Mi
           readinessProbe:
             httpGet:
               path: /

@@ -1,8 +1,65 @@
 {
   "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
-  "sourceRoot": "src",
+  "monorepo": true,
   "compilerOptions": {
+    "webpack": false,
     "deleteOutDir": true
+  },
+  "projects": {
+    "auth": {
+      "type": "application",
+      "root": "services/auth",
+      "entryFile": "main",
+      "sourceRoot": "services/auth/src",
+      "compilerOptions": {
+        "tsConfigPath": "services/auth/tsconfig.app.json"
+      }
+    },
+    "users": {
+      "type": "application",
+      "root": "services/users",
+      "entryFile": "main",
+      "sourceRoot": "services/users/src",
+      "compilerOptions": {
+        "tsConfigPath": "services/users/tsconfig.app.json"
+      }
+    },
+    "boards": {
+      "type": "application",
+      "root": "services/boards",
+      "entryFile": "main",
+      "sourceRoot": "services/boards/src",
+      "compilerOptions": {
+        "tsConfigPath": "services/boards/tsconfig.app.json"
+      }
+    },
+    "notifications": {
+      "type": "application",
+      "root": "services/notifications",
+      "entryFile": "main",
+      "sourceRoot": "services/notifications/src",
+      "compilerOptions": {
+        "tsConfigPath": "services/notifications/tsconfig.app.json"
+      }
+    },
+    "common": {
+      "type": "library",
+      "root": "packages/common",
+      "entryFile": "index",
+      "sourceRoot": "packages/common/src",
+      "compilerOptions": {
+        "tsConfigPath": "packages/common/tsconfig.lib.json"
+      }
+    },
+    "contracts": {
+      "type": "library",
+      "root": "packages/contracts",
+      "entryFile": "index",
+      "sourceRoot": "packages/contracts/src",
+      "compilerOptions": {
+        "tsConfigPath": "packages/contracts/tsconfig.lib.json"
+      }
+    }
   }
 }

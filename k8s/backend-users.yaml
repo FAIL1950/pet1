@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users
+  labels:
+    app.kubernetes.io/name: users
+    app.kubernetes.io/part-of: pet-1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: users
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: users
+    spec:
+      containers:
+        - name: users
+          # Built from backend/services/users/Dockerfile.dev via Skaffold; tag is set by the build pipeline.
+          image: pet-1-users:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: PORT
+              value: "3000"
+            - name: NODE_ENV
+              value: development
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 768Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: users
+  labels:
+    app.kubernetes.io/name: users
+    app.kubernetes.io/part-of: pet-1
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: users
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

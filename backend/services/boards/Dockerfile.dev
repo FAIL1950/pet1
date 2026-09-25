@@ -8,4 +8,4 @@ RUN bun install --frozen-lockfile
 COPY . .
 
 EXPOSE 3000/tcp
-CMD ["bun", "run", "start:dev"]
+CMD ["bun", "run", "start:boards:dev"]
