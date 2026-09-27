@@ -19,7 +19,7 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import CloseRounded from "@mui/icons-material/CloseRounded";
 import MenuRounded from "@mui/icons-material/MenuRounded";
-import ViewKanbanRounded from "@mui/icons-material/ViewKanbanRounded";
+import BrandLink from "./BrandLink";
 import ColorSchemeToggle from "./ColorSchemeToggle";
 import LocaleSwitcher from "./LocaleSwitcher";
 import { AUTH_ITEMS, isActive, NAV_ITEMS, type NavItem } from "./nav";
@@ -58,23 +58,7 @@ export default function AppHeader() {
     >
       <Container maxWidth="lg">
         <Toolbar disableGutters sx={{ gap: 1 }}>
-          <Box
-            component={NextLink}
-            href="/"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              mr: { md: 3 },
-              color: "text.primary",
-              textDecoration: "none",
-            }}
-          >
-            <ViewKanbanRounded color="primary" />
-            <Typography variant="h6" component="span" sx={{ fontWeight: 700 }}>
-              {t("brand")}
-            </Typography>
-          </Box>
+          <BrandLink sx={{ mr: { md: 3 } }} />
 
           <Box
             component="nav"
