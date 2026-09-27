@@ -1,0 +1,45 @@
+{
+  "Metadata": {
+    "title": "pet-1",
+    "description": "A platform for real-time collaborative project work on boards"
+  },
+  "Nav": {
+    "brand": "pet-1",
+    "mainNavigation": "Main navigation",
+    "about": "About",
+    "boards": "Boards",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "ColorScheme": {
+    "toggle": "Theme: {mode}",
+    "system": "system",
+    "light": "light",
+    "dark": "dark"
+  },
+  "LocaleSwitcher": {
+    "label": "Language",
+    "ua": "Українська",
+    "en": "English"
+  },
+  "AboutPage": {
+    "title": "Collaborative project work",
+    "description": "Create boards, add columns and cards, and work on tasks together with your team — changes made by others appear in real time.",
+    "getStarted": "Get started",
+    "openBoards": "Go to boards"
+  },
+  "SignInPage": {
+    "title": "Sign in"
+  },
+  "SignUpPage": {
+    "title": "Sign up"
+  },
+  "BoardsPage": {
+    "title": "Boards"
+  },
+  "BoardPage": {
+    "title": "Board"
+  }
+}

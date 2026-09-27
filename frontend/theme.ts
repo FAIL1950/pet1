@@ -1,8 +1,6 @@
-"use client";
+import type { ThemeOptions } from "@mui/material/styles";
 
-import { createTheme } from "@mui/material/styles";
-
-const theme = createTheme({
+const themeOptions: ThemeOptions = {
   cssVariables: {
     colorSchemeSelector: "class",
   },
@@ -55,6 +53,6 @@ const theme = createTheme({
   typography: {
     fontFamily: "var(--font-geist-sans), Arial, Helvetica, sans-serif",
   },
-});
+};
 
-export default theme;
+export default themeOptions;
