@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import Typography from "@mui/material/Typography";
+import AuthCard from "@/components/auth/AuthCard";
+import SignUpForm from "@/components/auth/SignUpForm";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("SignUpPage");
@@ -11,8 +12,14 @@ export default async function SignUpPage() {
   const t = await getTranslations("SignUpPage");
 
   return (
-    <Typography variant="h4" component="h1">
-      {t("title")}
-    </Typography>
+    <AuthCard
+      title={t("title")}
+      subtitle={t("subtitle")}
+      footerText={t("haveAccount")}
+      footerLinkText={t("switchLink")}
+      footerHref="/auth/sign-in"
+    >
+      <SignUpForm />
+    </AuthCard>
   );
 }

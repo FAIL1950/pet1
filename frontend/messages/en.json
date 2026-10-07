@@ -3,6 +3,9 @@
     "title": "pet-1",
     "description": "A platform for real-time collaborative project work on boards"
   },
+  "Common": {
+    "loading": "Loading…"
+  },
   "Nav": {
     "brand": "pet-1",
     "mainNavigation": "Main navigation",
@@ -31,10 +34,44 @@
     "openBoards": "Go to boards"
   },
   "SignInPage": {
-    "title": "Sign in"
+    "title": "Sign in",
+    "subtitle": "Sign in to continue working on your boards.",
+    "submit": "Sign in",
+    "noAccount": "Don't have an account?",
+    "switchLink": "Sign up"
   },
   "SignUpPage": {
-    "title": "Sign up"
+    "title": "Sign up",
+    "subtitle": "Create an account to work on boards together with your team.",
+    "submit": "Sign up",
+    "haveAccount": "Already have an account?",
+    "switchLink": "Sign in"
+  },
+  "AuthForm": {
+    "name": "Name",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "passwordHint": "At least {min} characters",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "or": "or",
+    "continueWithGoogle": "Continue with Google",
+    "validation": {
+      "required": "This field is required",
+      "email": "Enter a valid email address",
+      "passwordMin": "Password must be at least {min} characters",
+      "passwordMismatch": "Passwords don't match"
+    },
+    "errors": {
+      "invalidCredentials": "Invalid email or password",
+      "userExists": "A user with this email already exists",
+      "invalidEmail": "Invalid email address",
+      "passwordTooShort": "Password is too short",
+      "passwordTooLong": "Password is too long",
+      "network": "Couldn't reach the server. Check your connection and try again.",
+      "generic": "Something went wrong. Please try again."
+    }
   },
   "BoardsPage": {
     "title": "Boards"
