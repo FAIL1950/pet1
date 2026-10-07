@@ -1,0 +1,186 @@
+# Single-node Kafka (KRaft, combined broker+controller) for local dev.
+# In-cluster clients: kafka:9092. From the host (via skaffold port-forward): localhost:9094.
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-headless
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/part-of: pet-1
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: kafka
+  ports:
+    - name: client
+      port: 9092
+      targetPort: client
+    - name: controller
+      port: 9093
+      targetPort: controller
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/part-of: pet-1
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: kafka
+  ports:
+    - name: client
+      port: 9092
+      targetPort: client
+    - name: external
+      port: 9094
+      targetPort: external
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  labels:
+    app.kubernetes.io/name: kafka
+    app.kubernetes.io/part-of: pet-1
+spec:
+  serviceName: kafka-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kafka
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka
+    spec:
+      securityContext:
+        # apache/kafka runs as appuser (uid 1000); make the PV writable for it.
+        fsGroup: 1000
+      containers:
+        - name: kafka
+          image: apache/kafka:4.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: client
+              containerPort: 9092
+            - name: controller
+              containerPort: 9093
+            - name: external
+              containerPort: 9094
+          env:
+            # Base64-encoded UUID (as produced by `kafka-storage.sh random-uuid`).
+            - name: CLUSTER_ID
+              value: MkU3OEVBNTcwNTJENDM2Qk
+            - name: KAFKA_NODE_ID
+              value: "1"
+            - name: KAFKA_PROCESS_ROLES
+              value: broker,controller
+            - name: KAFKA_LISTENERS
+              value: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+            - name: KAFKA_CONTROLLER_LISTENER_NAMES
+              value: CONTROLLER
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: PLAINTEXT
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: 1@localhost:9093
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "1"
+            - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+              value: "0"
+            - name: KAFKA_NUM_PARTITIONS
+              value: "3"
+            # Topics are created explicitly by the kafka-init-topics Job.
+            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+              value: "false"
+            # Subdirectory so the PV's lost+found doesn't end up in the log dir.
+            - name: KAFKA_LOG_DIRS
+              value: /var/lib/kafka/data/logs
+            - name: KAFKA_HEAP_OPTS
+              value: -Xmx512m -Xms512m
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/kafka/data
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          readinessProbe:
+            tcpSocket:
+              port: client
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: client
+            initialDelaySeconds: 30
+            periodSeconds: 20
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app.kubernetes.io/name: kafka
+          app.kubernetes.io/part-of: pet-1
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kafka-init-topics
+  labels:
+    app.kubernetes.io/name: kafka-init-topics
+    app.kubernetes.io/part-of: pet-1
+spec:
+  backoffLimit: 10
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kafka-init-topics
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: init-topics
+          image: apache/kafka:4.1.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              BOOTSTRAP=kafka:9092
+              until /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server "$BOOTSTRAP" > /dev/null 2>&1; do
+                echo "waiting for $BOOTSTRAP..."
+                sleep 3
+              done
+              for topic in auth.events board.events notification.events; do
+                /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$BOOTSTRAP" \
+                  --create --if-not-exists --topic "$topic" \
+                  --partitions 3 --replication-factor 1
+              done
+              /opt/kafka/bin/kafka-topics.sh --bootstrap-server "$BOOTSTRAP" --list
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
