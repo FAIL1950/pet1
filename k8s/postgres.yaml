@@ -1,0 +1,131 @@
+# Single-node PostgreSQL for local dev, shared server with one database + role per service
+# (database-per-service: each service's role can connect only to its own database).
+# In-cluster clients: postgres:5432. From the host (via skaffold port-forward): localhost:5432.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-credentials
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: pet-1
+type: Opaque
+# DEV-ONLY credentials. Never reuse these outside a local cluster.
+stringData:
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  AUTH_DB_PASSWORD: auth
+  USERS_DB_PASSWORD: users
+  BOARDS_DB_PASSWORD: boards
+  NOTIFICATIONS_DB_PASSWORD: notifications
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: pet-1
+data:
+  # Runs once, on first start with an empty data directory.
+  01-service-databases.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    create_service_db() {
+      local name="$1" password="$2"
+      local psql=(psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres)
+      "${psql[@]}" -c "CREATE ROLE \"$name\" LOGIN PASSWORD '$password'"
+      "${psql[@]}" -c "CREATE DATABASE \"$name\" OWNER \"$name\""
+      "${psql[@]}" -c "REVOKE CONNECT ON DATABASE \"$name\" FROM PUBLIC"
+    }
+
+    create_service_db auth "$AUTH_DB_PASSWORD"
+    create_service_db users "$USERS_DB_PASSWORD"
+    create_service_db boards "$BOARDS_DB_PASSWORD"
+    create_service_db notifications "$NOTIFICATIONS_DB_PASSWORD"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: pet-1
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/part-of: pet-1
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:18
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: postgres
+              containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: postgres-credentials
+          volumeMounts:
+            # postgres:18 keeps PGDATA in a versioned subdirectory of /var/lib/postgresql.
+            - name: data
+              mountPath: /var/lib/postgresql
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d postgres"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d postgres"]
+            initialDelaySeconds: 30
+            periodSeconds: 20
+      volumes:
+        - name: init
+          configMap:
+            name: postgres-init
+            defaultMode: 0755
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app.kubernetes.io/name: postgres
+          app.kubernetes.io/part-of: pet-1
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

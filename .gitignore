@@ -1,0 +1,2 @@
+# Real k8s secrets (see k8s/*.secret.yaml.example)
+k8s/*.secret.yaml

@@ -1,3 +1,20 @@
+# DEV-ONLY secrets for the auth service. Must match the auth role in postgres.yaml.
+# Google OAuth credentials live in the gitignored k8s/google-oauth.secret.yaml (Secret `google-oauth`,
+# template: k8s/google-oauth.secret.yaml.example); Google sign-in is enabled only when it exists.
+# Redirect URI to register in Google Console: http://localhost/api/auth/callback/google.
+# Google accepts plain http:// redirect URIs only for localhost, hence the app is served at http://localhost.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: auth-secrets
+  labels:
+    app.kubernetes.io/name: auth
+    app.kubernetes.io/part-of: pet-1
+type: Opaque
+stringData:
+  DATABASE_URL: postgres://auth:auth@postgres:5432/auth
+  BETTER_AUTH_SECRET: dev-only-better-auth-secret-change-me-0123456789
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -32,6 +49,18 @@ spec:
               value: kafka:9092
             - name: KAFKA_CLIENT_ID
               value: auth
+            - name: BETTER_AUTH_URL
+              value: http://localhost
+            - name: TRUSTED_ORIGINS
+              value: http://localhost,http://localhost:3000
+          envFrom:
+            # DATABASE_URL, BETTER_AUTH_SECRET.
+            - secretRef:
+                name: auth-secrets
+            # GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET; absent Secret just disables Google sign-in.
+            - secretRef:
+                name: google-oauth
+                optional: true
           resources:
             requests:
               cpu: 100m

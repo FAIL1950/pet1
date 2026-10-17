@@ -56,3 +56,7 @@ portForward:
     resourceName: kafka
     port: 9094
     localPort: 9094
+  - resourceType: service
+    resourceName: postgres
+    port: 5432
+    localPort: 5432

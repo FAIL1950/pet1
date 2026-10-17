@@ -19,9 +19,9 @@
     "strictPropertyInitialization": false,
     "types": ["vitest/globals", "node"],
     "paths": {
-      "@app/common": ["./packages/common/src"],
+      "@app/common": ["./packages/common/src/index.ts"],
       "@app/common/*": ["./packages/common/src/*"],
-      "@app/contracts": ["./packages/contracts/src"],
+      "@app/contracts": ["./packages/contracts/src/index.ts"],
       "@app/contracts/*": ["./packages/contracts/src/*"]
     }
   },
