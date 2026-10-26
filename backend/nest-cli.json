@@ -16,15 +16,6 @@
         "tsConfigPath": "services/auth/tsconfig.app.json"
       }
     },
-    "users": {
-      "type": "application",
-      "root": "services/users",
-      "entryFile": "main",
-      "sourceRoot": "services/users/src",
-      "compilerOptions": {
-        "tsConfigPath": "services/users/tsconfig.app.json"
-      }
-    },
     "boards": {
       "type": "application",
       "root": "services/boards",

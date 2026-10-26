@@ -28,6 +28,9 @@ spec:
               value: "3000"
             - name: NODE_ENV
               value: development
+            # Server-side session checks call the auth Service directly (lib/auth/session.ts).
+            - name: AUTH_INTERNAL_URL
+              value: http://auth
           resources:
             requests:
               cpu: 100m

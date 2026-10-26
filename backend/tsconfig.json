@@ -28,7 +28,6 @@
   "files": [],
   "references": [
     { "path": "./services/auth/tsconfig.app.json" },
-    { "path": "./services/users/tsconfig.app.json" },
     { "path": "./services/boards/tsconfig.app.json" },
     { "path": "./services/notifications/tsconfig.app.json" }
   ]

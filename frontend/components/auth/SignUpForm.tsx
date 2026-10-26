@@ -7,7 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
-import { AFTER_AUTH_REDIRECT, authClient } from "@/lib/auth/client";
+import { authClient } from "@/lib/auth/client";
+import { useAfterAuthRedirect } from "@/lib/auth/useAfterAuthRedirect";
 import { authErrorKey, type AuthErrorKey } from "@/lib/auth/errors";
 import { MIN_PASSWORD_LENGTH, signUpSchema, type SignUpValues } from "@/lib/auth/schemas";
 import FormTextField from "./FormTextField";
@@ -16,6 +17,7 @@ export default function SignUpForm() {
   const t = useTranslations("AuthForm");
   const tPage = useTranslations("SignUpPage");
   const router = useRouter();
+  const afterAuthRedirect = useAfterAuthRedirect();
   const {
     control,
     handleSubmit,
@@ -35,13 +37,13 @@ export default function SignUpForm() {
         name,
         email,
         password,
-        callbackURL: AFTER_AUTH_REDIRECT,
+        callbackURL: afterAuthRedirect,
       });
       if (error) {
         setServerError(authErrorKey(error));
         return;
       }
-      router.replace(AFTER_AUTH_REDIRECT);
+      router.replace(afterAuthRedirect);
       router.refresh();
     } catch {
       setServerError(authErrorKey(null));

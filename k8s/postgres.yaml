@@ -14,7 +14,6 @@ stringData:
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
   AUTH_DB_PASSWORD: auth
-  USERS_DB_PASSWORD: users
   BOARDS_DB_PASSWORD: boards
   NOTIFICATIONS_DB_PASSWORD: notifications
 ---
@@ -40,7 +39,6 @@ data:
     }
 
     create_service_db auth "$AUTH_DB_PASSWORD"
-    create_service_db users "$USERS_DB_PASSWORD"
     create_service_db boards "$BOARDS_DB_PASSWORD"
     create_service_db notifications "$NOTIFICATIONS_DB_PASSWORD"
 ---

@@ -14,7 +14,9 @@
     "signIn": "Sign in",
     "signUp": "Sign up",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "userMenu": "User menu",
+    "signOut": "Sign out"
   },
   "ColorScheme": {
     "toggle": "Theme: {mode}",

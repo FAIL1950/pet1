@@ -49,7 +49,6 @@ A reasonable initial decomposition is:
 backend/
   services/
     auth/
-    users/
     boards/
     notifications/
   packages/
@@ -69,13 +68,10 @@ Responsibilities:
 - OAuth.
 - Session management.
 - Authentication-related persistence.
+- User profile data (stored in Better Auth's `user` table, extended via `additionalFields` when needed).
+- Publishing user lifecycle events (`UserRegistered`, later `UserUpdated`/`UserDeleted`) so other services keep their own user projections.
 
-### Users Service
-
-Responsibilities:
-
-- User profile data.
-- User-related domain operations.
+There is no separate Users Service: user identity and profile are owned by the Auth Service. Other services reference users by the Better Auth `user.id` and keep local read models built from `auth.events`.
 
 ### Boards Service
 
@@ -616,7 +612,6 @@ The platform should include infrastructure for:
 ```text
 Frontend
 Auth Service
-Users Service
 Boards Service
 Notifications Service
 PostgreSQL

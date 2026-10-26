@@ -14,7 +14,9 @@
     "signIn": "Увійти",
     "signUp": "Зареєструватися",
     "openMenu": "Відкрити меню",
-    "closeMenu": "Закрити меню"
+    "closeMenu": "Закрити меню",
+    "userMenu": "Меню користувача",
+    "signOut": "Вийти"
   },
   "ColorScheme": {
     "toggle": "Тема: {mode}",

@@ -6,11 +6,13 @@ import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import GoogleIcon from "@mui/icons-material/Google";
-import { AFTER_AUTH_REDIRECT, authClient } from "@/lib/auth/client";
+import { authClient } from "@/lib/auth/client";
+import { useAfterAuthRedirect } from "@/lib/auth/useAfterAuthRedirect";
 import { authErrorKey, type AuthErrorKey } from "@/lib/auth/errors";
 
 export default function GoogleSignInButton() {
   const t = useTranslations("AuthForm");
+  const afterAuthRedirect = useAfterAuthRedirect();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<AuthErrorKey | null>(null);
 
@@ -22,7 +24,7 @@ export default function GoogleSignInButton() {
       const { error } = await authClient.signIn.social({
         provider: "google",
         // Absolute: the OAuth callback is handled by the auth service, which then redirects here.
-        callbackURL: `${window.location.origin}${AFTER_AUTH_REDIRECT}`,
+        callbackURL: `${window.location.origin}${afterAuthRedirect}`,
       });
       if (error) {
         setError(authErrorKey(error));

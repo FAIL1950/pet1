@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { getTranslations } from "next-intl/server";
+import { requireSession } from "@/lib/auth/session";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("BoardPage");
@@ -9,7 +10,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 // Full-width workspace (no Container): boards scroll horizontally on small screens.
-export default async function BoardPage() {
+export default async function BoardPage({ params }: PageProps<"/boards/[boardId]">) {
+  const { boardId } = await params;
+  await requireSession(`/boards/${encodeURIComponent(boardId)}`);
   const t = await getTranslations("BoardPage");
 
   return (

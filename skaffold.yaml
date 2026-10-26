@@ -8,10 +8,6 @@ build:
       context: backend
       docker:
         dockerfile: services/auth/Dockerfile.dev
-    - image: pet-1-users
-      context: backend
-      docker:
-        dockerfile: services/users/Dockerfile.dev
     - image: pet-1-boards
       context: backend
       docker:
@@ -40,10 +36,6 @@ portForward:
     resourceName: auth
     port: 80
     localPort: 3001
-  - resourceType: service
-    resourceName: users
-    port: 80
-    localPort: 3002
   - resourceType: service
     resourceName: boards
     port: 80

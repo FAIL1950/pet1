@@ -7,5 +7,3 @@ export const authClient = createAuthClient({
 });
 
 export type SocialProvider = "google";
-
-export const AFTER_AUTH_REDIRECT = "/boards";

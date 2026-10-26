@@ -22,9 +22,13 @@ import MenuRounded from "@mui/icons-material/MenuRounded";
 import BrandLink from "./BrandLink";
 import ColorSchemeToggle from "./ColorSchemeToggle";
 import LocaleSwitcher from "./LocaleSwitcher";
+import type { SessionUser } from "@/lib/auth/session";
 import { AUTH_ITEMS, isActive, NAV_ITEMS, type NavItem } from "./nav";
+import UserMenu from "./UserMenu";
 
-export default function AppHeader() {
+// `user` comes from the server-side session (see app/(main)/layout.tsx); `router.refresh()` after
+// sign-in/sign-out re-renders the layout so the header switches between auth buttons and the avatar.
+export default function AppHeader({ user }: { user: SessionUser | null }) {
   const t = useTranslations("Nav");
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -87,14 +91,18 @@ export default function AppHeader() {
           <LocaleSwitcher />
           <ColorSchemeToggle />
 
-          <Box sx={{ display: { xs: "none", md: "flex" }, gap: 1, ml: 1 }}>
-            <Button component={NextLink} href="/auth/sign-in" color="inherit">
-              {t("signIn")}
-            </Button>
-            <Button component={NextLink} href="/auth/sign-up" variant="contained" disableElevation>
-              {t("signUp")}
-            </Button>
-          </Box>
+          {user ? (
+            <UserMenu user={user} />
+          ) : (
+            <Box sx={{ display: { xs: "none", md: "flex" }, gap: 1, ml: 1 }}>
+              <Button component={NextLink} href="/auth/sign-in" color="inherit">
+                {t("signIn")}
+              </Button>
+              <Button component={NextLink} href="/auth/sign-up" variant="contained" disableElevation>
+                {t("signUp")}
+              </Button>
+            </Box>
+          )}
 
           <IconButton
             color="inherit"
@@ -130,8 +138,12 @@ export default function AppHeader() {
           <Box component="nav" aria-label={t("mainNavigation")}>
             <List>{renderDrawerItems(NAV_ITEMS)}</List>
           </Box>
-          <Divider />
-          <List>{renderDrawerItems(AUTH_ITEMS)}</List>
+          {!user && (
+            <>
+              <Divider />
+              <List>{renderDrawerItems(AUTH_ITEMS)}</List>
+            </>
+          )}
         </Box>
       </Drawer>
     </AppBar>

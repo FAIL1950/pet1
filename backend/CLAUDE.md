@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-A NestJS backend using Nest CLI **monorepo mode**: four independently buildable/runnable microservices under `services/` (`auth`, `users`, `boards`, `notifications`) plus two shared libraries under `packages/` (`common`, `contracts`), all sharing one root `package.json`/`node_modules`/`bun.lock` via `nest-cli.json`'s `projects` map — there is no default/root app. `users`, `boards` and `notifications` are still empty "Hello World"-style Nest apps (module/controller/service + a root `@Get()` health endpoint). `auth` is implemented (see **Auth service** below). Uses **Bun** as the package manager/runtime (`bun.lock` present) and ESM (`"type": "module"` in package.json) with NodeNext module resolution — relative imports must include the `.js` extension (e.g. `import { AuthService } from './auth.service.js'`), matching what's in every `services/*/src/*.ts` and `packages/*/src/*.ts` file.
+A NestJS backend using Nest CLI **monorepo mode**: three independently buildable/runnable microservices under `services/` (`auth`, `boards`, `notifications`) plus two shared libraries under `packages/` (`common`, `contracts`), all sharing one root `package.json`/`node_modules`/`bun.lock` via `nest-cli.json`'s `projects` map — there is no default/root app. `boards` and `notifications` are still empty "Hello World"-style Nest apps (module/controller/service + a root `@Get()` health endpoint). `auth` is implemented (see **Auth service** below). Uses **Bun** as the package manager/runtime (`bun.lock` present) and ESM (`"type": "module"` in package.json) with NodeNext module resolution — relative imports must include the `.js` extension (e.g. `import { AuthService } from './auth.service.js'`), matching what's in every `services/*/src/*.ts` and `packages/*/src/*.ts` file.
 
 ### Target architecture (see `SPEC.md`)
 
 None of the below is implemented yet, but it is the intended design and should shape how new code is structured. Read `SPEC.md` in full before building out a feature area — it has the authoritative details (event envelope shape, API examples, topic names, env vars).
 
-- This backend is for a collaborative project-management platform (boards with columns/cards, e.g. Kanban), built as **independently deployable microservices** under `services/` (`auth`, `users`, `boards`, `notifications`) plus shared `packages/` (`common`, `contracts`) — this decomposition now exists as empty scaffolding (see above); the business logic described below is still to be implemented.
+- This backend is for a collaborative project-management platform (boards with columns/cards, e.g. Kanban), built as **independently deployable microservices** under `services/` (`auth`, `boards`, `notifications`) plus shared `packages/` (`common`, `contracts`) — this decomposition now exists as empty scaffolding (see above); the business logic described below is still to be implemented.
 - Stack per SPEC: PostgreSQL + TypeORM, Apache Kafka, Better Auth (email/password + OAuth), Kubernetes, Skaffold for local dev/deploy.
 - **Kafka is the source of truth for board domain changes** (`BoardCreated`, `CardMoved`, etc.); PostgreSQL holds a rebuildable projection/query store, not the authoritative history. Commands (e.g. `MoveCard`) are validated by a service and turned into events; the frontend never writes to Postgres or Kafka directly.
 - Kafka partitioning uses the board/aggregate ID as the key, for in-order processing per board. Consumers must be idempotent (dedupe via `eventId`/version) and handle retries, rebalancing, and graceful shutdown.
@@ -21,7 +21,7 @@ None of the below is implemented yet, but it is the intended design and should s
 ## Commands
 
 - Install deps: `bun install`
-- Run a service in watch mode: `bun run start:auth:dev` (also `start:users:dev`, `start:boards:dev`, `start:notifications:dev`) — runs `bun --watch services/<svc>/src/main.ts` directly from TS source, no build step
+- Run a service in watch mode: `bun run start:auth:dev` (also `start:boards:dev`, `start:notifications:dev`) — runs `bun --watch services/<svc>/src/main.ts` directly from TS source, no build step
 - Typecheck all services: `bun run typecheck` (`tsc -p services/<svc>/tsconfig.json`, `noEmit`)
 - `bun run build:<svc>` (`nest build`) is **not** the run path: Nest CLI's alias rewrite emits ESM-invalid specifiers for `@app/*` imports, so its output breaks for any service importing `packages/*`
 - Lint: `bun run lint` (oxlint against `services/` and `packages/`)

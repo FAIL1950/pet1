@@ -17,13 +17,6 @@ spec:
                 name: auth
                 port:
                   number: 80
-          - path: /api/users
-            pathType: Prefix
-            backend:
-              service:
-                name: users
-                port:
-                  number: 80
           - path: /api/boards
             pathType: Prefix
             backend:
