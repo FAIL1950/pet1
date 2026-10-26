@@ -261,7 +261,17 @@ columns
 cards
 ```
 
-The exact schema may evolve.
+The exact schema may evolve. Current schema (TypeORM entities + migrations under `services/<svc>/src/database/`):
+
+- **boards DB**
+  - `users` — local projection of auth users fed by `UserRegistered` (`id` = Better Auth id, `email`, `name`, `image` avatar URL). The auth DB is not reachable from other services (database-per-service), so members reference this table.
+  - `boards` — `id`, `title`, `description`, `version` (last applied event version).
+  - `board_members` — `(board_id, user_id)` PK, `role` (`OWNER`/`EDITOR`/`VIEWER`); a partial unique index allows exactly one `OWNER` per board.
+  - `columns`, `cards` — ordered by `position`, a fractional-index string key (`text COLLATE "C"`, generated with `fractional-indexing`): a move rewrites only the moved item's key, so it is one row update and one event, with no renumbering.
+- **notifications DB** — `email_deliveries` (`source_event_id`, `kind`, `recipient`, `status`, `attempts`, `last_error`, `sent_at`).
+- **auth DB** — owned by Better Auth (`user`, `session`, `account`, `verification`).
+
+Board membership: the creator becomes `OWNER` on `BoardCreated`; others are added by email (looked up in the local `users` projection) through `BoardMemberAdded` / `BoardMemberRoleChanged` / `BoardMemberRemoved` events, which only the `OWNER` may trigger. Permissions are checked in the command handler against the projection (VIEWER reads; EDITOR also edits columns/cards; OWNER also manages members and the board itself). Consistency window: the check reads the projection, so a just-revoked role may still pass for the short time until the projection catches up.
 
 The database must not be considered the authoritative event history for board mutations.
 
@@ -476,17 +486,13 @@ Every event consumer must be able to safely process a duplicate event.
 
 Use `eventId` and/or an aggregate version to detect already processed events.
 
-Possible approach:
+Current approach — no generic `processed_events` table; each consumer dedupes by a natural key:
 
-```text
-processed_events
-----------------
-event_id
-consumer
-processed_at
-```
+- Board events → the board projection: `boards.version` stores the version of the last applied event; an event with `version <= boards.version` is a duplicate and is skipped.
+- `UserRegistered` → the boards `users` projection: upsert by user id (re-applying is a no-op).
+- Notifications: `email_deliveries` has a unique `(source_event_id, kind)` key, so a redelivered event cannot send a second email.
 
-The exact implementation may be optimized later.
+Add a `processed_events (event_id, consumer, processed_at)` table only for a consumer that has no such natural key.
 
 ---
 

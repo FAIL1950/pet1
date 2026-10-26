@@ -21,6 +21,7 @@ export function toUserRegisteredEvent(user: User): UserRegisteredEvent {
       userId: user.id,
       email: user.email,
       name: user.name,
+      image: user.image ?? null,
       emailVerified: user.emailVerified,
       createdAt: new Date(user.createdAt).toISOString(),
     },

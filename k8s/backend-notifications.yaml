@@ -1,3 +1,15 @@
+# DEV-ONLY secrets for the notifications service. Must match the notifications role in postgres.yaml.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: notifications-secrets
+  labels:
+    app.kubernetes.io/name: notifications
+    app.kubernetes.io/part-of: pet-1
+type: Opaque
+stringData:
+  DATABASE_URL: postgres://notifications:notifications@postgres:5432/notifications
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -32,6 +44,10 @@ spec:
               value: kafka:9092
             - name: KAFKA_CLIENT_ID
               value: notifications
+          envFrom:
+            # DATABASE_URL; migrations run on boot (TypeOrmModule migrationsRun).
+            - secretRef:
+                name: notifications-secrets
           resources:
             requests:
               cpu: 100m

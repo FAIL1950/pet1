@@ -1,3 +1,2 @@
-// Shared utilities for backend services. Intentionally empty for now —
-// no cross-service helpers have been extracted yet.
-export {};
+// Shared utilities for backend services.
+export * from './env.js';

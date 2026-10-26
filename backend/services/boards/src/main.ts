@@ -1,8 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { BoardsModule } from './boards.module.js';
+import { config } from './config.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(BoardsModule);
-  await app.listen(process.env.PORT ?? 3000);
+  app.enableShutdownHooks();
+  await app.listen(config.port);
 }
 await bootstrap();

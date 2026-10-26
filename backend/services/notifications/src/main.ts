@@ -1,8 +1,10 @@
 import { NestFactory } from '@nestjs/core';
+import { config } from './config.js';
 import { NotificationsModule } from './notifications.module.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(NotificationsModule);
-  await app.listen(process.env.PORT ?? 3000);
+  app.enableShutdownHooks();
+  await app.listen(config.port);
 }
 await bootstrap();

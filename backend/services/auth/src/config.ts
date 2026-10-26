@@ -1,21 +1,4 @@
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable ${name}`);
-  }
-  return value;
-}
-
-function optionalEnv(name: string): string | undefined {
-  return process.env[name] || undefined;
-}
-
-function listEnv(name: string): string[] {
-  return requireEnv(name)
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
+import { listEnv, optionalEnv, requireEnv } from '@app/common';
 
 export const config = {
   port: Number(process.env.PORT ?? 3000),

@@ -1,3 +1,15 @@
+# DEV-ONLY secrets for the boards service. Must match the boards role in postgres.yaml.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: boards-secrets
+  labels:
+    app.kubernetes.io/name: boards
+    app.kubernetes.io/part-of: pet-1
+type: Opaque
+stringData:
+  DATABASE_URL: postgres://boards:boards@postgres:5432/boards
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -32,6 +44,10 @@ spec:
               value: kafka:9092
             - name: KAFKA_CLIENT_ID
               value: boards
+          envFrom:
+            # DATABASE_URL; migrations run on boot (TypeOrmModule migrationsRun).
+            - secretRef:
+                name: boards-secrets
           resources:
             requests:
               cpu: 100m

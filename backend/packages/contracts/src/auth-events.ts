@@ -6,6 +6,8 @@ export interface UserRegisteredPayload {
   userId: string;
   email: string;
   name: string;
+  /** Avatar URL (e.g. from Google); null for email sign-ups. */
+  image: string | null;
   emailVerified: boolean;
   createdAt: string;
 }
