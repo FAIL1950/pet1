@@ -1,19 +1,9 @@
 import { z } from "zod";
+import { requiredString, type ValidationKey } from "@/lib/validation";
 
 // Mirrors Better Auth's default `minPasswordLength`; the server remains the final authority.
 export const MIN_PASSWORD_LENGTH = 8;
 
-// Error messages are keys under `AuthForm.validation` — schemas stay locale-agnostic and
-// `FormTextField` translates them.
-const VALIDATION_KEYS = ["required", "email", "passwordMin", "passwordMismatch"] as const;
-
-export type ValidationKey = (typeof VALIDATION_KEYS)[number];
-
-export function isValidationKey(message: string | undefined): message is ValidationKey {
-  return (VALIDATION_KEYS as readonly string[]).includes(message ?? "");
-}
-
-const requiredString = z.string().trim().min(1, { error: "required" satisfies ValidationKey });
 const email = requiredString.pipe(z.email({ error: "email" satisfies ValidationKey }));
 const requiredPassword = z.string().min(1, { error: "required" satisfies ValidationKey });
 

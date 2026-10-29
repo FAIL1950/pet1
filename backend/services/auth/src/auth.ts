@@ -1,4 +1,5 @@
 import { betterAuth } from 'better-auth';
+import { jwt } from 'better-auth/plugins/jwt';
 import { Pool } from 'pg';
 import { config } from './config.js';
 
@@ -24,6 +25,19 @@ export const auth = betterAuth({
           },
         }
       : {},
+  plugins: [
+    // Short-lived access tokens (`GET /api/auth/token`) that other services verify locally
+    // against `GET /api/auth/jwks`, so they never call auth per request. `sub` is the user id.
+    jwt({
+      jwt: {
+        definePayload: ({ user }) => ({
+          email: user.email,
+          name: user.name,
+          image: user.image ?? null,
+        }),
+      },
+    }),
+  ],
   // Populated at runtime by @DatabaseHook() providers (see events/user-registered.hook.ts).
   databaseHooks: {},
 });

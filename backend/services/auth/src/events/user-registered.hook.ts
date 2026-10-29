@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { KafkaProducerService } from '@app/common';
 import {
   AUTH_EVENTS_TOPIC,
   USER_REGISTERED,
@@ -7,7 +8,6 @@ import {
 import { AfterCreate, DatabaseHook } from '@thallesp/nestjs-better-auth';
 import type { User } from 'better-auth';
 import { randomUUID } from 'node:crypto';
-import { KafkaProducerService } from '../kafka/kafka-producer.service.js';
 
 export function toUserRegisteredEvent(user: User): UserRegisteredEvent {
   return {

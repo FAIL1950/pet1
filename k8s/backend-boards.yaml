@@ -44,6 +44,15 @@ spec:
               value: kafka:9092
             - name: KAFKA_CLIENT_ID
               value: boards
+            # Consumer group of the projection consumer (board.events + auth.events -> Postgres).
+            - name: KAFKA_GROUP_ID
+              value: boards-projection
+            # Access tokens (JWT) are verified locally; public keys come from the auth Service and are cached.
+            - name: AUTH_JWKS_URL
+              value: http://auth/api/auth/jwks
+            # Must equal auth's BETTER_AUTH_URL (JWT iss/aud).
+            - name: AUTH_JWT_ISSUER
+              value: http://localhost
           envFrom:
             # DATABASE_URL; migrations run on boot (TypeOrmModule migrationsRun).
             - secretRef:

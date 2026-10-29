@@ -11,7 +11,7 @@ import { authClient } from "@/lib/auth/client";
 import { useAfterAuthRedirect } from "@/lib/auth/useAfterAuthRedirect";
 import { authErrorKey, type AuthErrorKey } from "@/lib/auth/errors";
 import { signInSchema, type SignInValues } from "@/lib/auth/schemas";
-import FormTextField from "./FormTextField";
+import FormTextField from "@/components/form/FormTextField";
 
 export default function SignInForm() {
   const t = useTranslations("AuthForm");

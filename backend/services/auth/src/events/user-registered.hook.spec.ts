@@ -1,9 +1,9 @@
 import { AUTH_EVENTS_TOPIC, USER_REGISTERED } from '@app/contracts';
 import type { User } from 'better-auth';
-import type { KafkaProducerService } from '../kafka/kafka-producer.service.js';
+import type { KafkaProducerService } from '@app/common';
 import { UserRegisteredHook } from './user-registered.hook.js';
 
-vi.mock('../kafka/kafka-producer.service.js', () => ({
+vi.mock('@app/common', () => ({
   KafkaProducerService: class {},
 }));
 

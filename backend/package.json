@@ -38,11 +38,13 @@
     "@thallesp/nestjs-better-auth": "^2.8.0",
     "better-auth": "^1.7.5",
     "fractional-indexing": "^4.0.0",
+    "jose": "^6.2.12",
     "kafkajs": "^2.2.4",
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "typeorm": "^1.1.1"
+    "typeorm": "^1.1.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.0",
@@ -62,5 +64,8 @@
     "typescript": "^6.0.2",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.2"
+  },
+  "overrides": {
+    "zod": "^4.6.7"
   }
 }

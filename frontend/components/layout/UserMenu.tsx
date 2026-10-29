@@ -13,6 +13,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Typography from "@mui/material/Typography";
 import LogoutRounded from "@mui/icons-material/LogoutRounded";
 import { authClient } from "@/lib/auth/client";
+import { clearAccessToken } from "@/lib/auth/token";
 import type { SessionUser } from "@/lib/auth/session";
 
 function initials({ name, email }: SessionUser): string {
@@ -38,6 +39,7 @@ export default function UserMenu({ user }: { user: SessionUser }) {
     setSigningOut(true);
     try {
       await authClient.signOut();
+      clearAccessToken();
     } finally {
       handleClose();
       setSigningOut(false);
@@ -59,6 +61,8 @@ export default function UserMenu({ user }: { user: SessionUser }) {
         <Avatar
           src={user.image ?? undefined}
           alt={user.name || user.email}
+          // Google avatars reject requests with a foreign Referer.
+          slotProps={{ img: { referrerPolicy: "no-referrer" } }}
           sx={{ width: 32, height: 32, fontSize: 14, bgcolor: "primary.main" }}
         >
           {initials(user)}

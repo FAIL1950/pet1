@@ -55,16 +55,8 @@
     "password": "Password",
     "confirmPassword": "Confirm password",
     "passwordHint": "At least {min} characters",
-    "showPassword": "Show password",
-    "hidePassword": "Hide password",
     "or": "or",
     "continueWithGoogle": "Continue with Google",
-    "validation": {
-      "required": "This field is required",
-      "email": "Enter a valid email address",
-      "passwordMin": "Password must be at least {min} characters",
-      "passwordMismatch": "Passwords don't match"
-    },
     "errors": {
       "invalidCredentials": "Invalid email or password",
       "userExists": "A user with this email already exists",
@@ -75,8 +67,32 @@
       "generic": "Something went wrong. Please try again."
     }
   },
+  "Form": {
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "validation": {
+      "required": "This field is required",
+      "tooLong": "This text is too long",
+      "email": "Enter a valid email address",
+      "passwordMin": "Password must be at least {min} characters",
+      "passwordMismatch": "Passwords don't match"
+    }
+  },
   "BoardsPage": {
-    "title": "Boards"
+    "title": "Boards",
+    "create": "Create new board"
+  },
+  "CreateBoardDialog": {
+    "title": "New board",
+    "name": "Name",
+    "description": "Description",
+    "cancel": "Cancel",
+    "submit": "Create",
+    "errors": {
+      "unauthorized": "Your session has expired — please sign in again",
+      "network": "Couldn't reach the server. Check your connection and try again.",
+      "generic": "Something went wrong. Please try again."
+    }
   },
   "BoardPage": {
     "title": "Board"

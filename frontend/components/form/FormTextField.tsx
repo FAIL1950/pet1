@@ -3,7 +3,8 @@
 import { useController, type Control, type FieldPath, type FieldValues } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import TextField, { type TextFieldProps } from "@mui/material/TextField";
-import { isValidationKey, MIN_PASSWORD_LENGTH } from "@/lib/auth/schemas";
+import { MIN_PASSWORD_LENGTH } from "@/lib/auth/schemas";
+import { isValidationKey } from "@/lib/validation";
 import PasswordField from "./PasswordField";
 
 type FormTextFieldProps<T extends FieldValues> = Omit<
@@ -22,7 +23,7 @@ export default function FormTextField<T extends FieldValues>({
   helperText,
   ...props
 }: FormTextFieldProps<T>) {
-  const t = useTranslations("AuthForm");
+  const t = useTranslations("Form");
   const { field, fieldState } = useController({ control, name });
 
   const message = fieldState.error?.message;

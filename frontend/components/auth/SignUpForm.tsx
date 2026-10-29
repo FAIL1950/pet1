@@ -11,7 +11,7 @@ import { authClient } from "@/lib/auth/client";
 import { useAfterAuthRedirect } from "@/lib/auth/useAfterAuthRedirect";
 import { authErrorKey, type AuthErrorKey } from "@/lib/auth/errors";
 import { MIN_PASSWORD_LENGTH, signUpSchema, type SignUpValues } from "@/lib/auth/schemas";
-import FormTextField from "./FormTextField";
+import FormTextField from "@/components/form/FormTextField";
 
 export default function SignUpForm() {
   const t = useTranslations("AuthForm");

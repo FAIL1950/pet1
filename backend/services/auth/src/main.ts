@@ -5,7 +5,7 @@ import { AuthModule } from './auth.module.js';
 import { config } from './config.js';
 
 async function bootstrap() {
-  // Idempotent: creates/extends the Better Auth tables (user, session, account, verification).
+  // Idempotent: creates/extends the Better Auth tables (user, session, account, verification, jwks).
   const { runMigrations } = await getMigrations(auth.options);
   await runMigrations();
 

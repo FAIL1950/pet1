@@ -9,7 +9,7 @@ import VisibilityOffRounded from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRounded from "@mui/icons-material/VisibilityRounded";
 
 export default function PasswordField(props: Omit<TextFieldProps, "type">) {
-  const t = useTranslations("AuthForm");
+  const t = useTranslations("Form");
   const [visible, setVisible] = useState(false);
 
   return (

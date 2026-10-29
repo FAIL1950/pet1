@@ -1,6 +1,8 @@
 "use client";
 
+import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
+import Skeleton from "@mui/material/Skeleton";
 import Tooltip from "@mui/material/Tooltip";
 import { useColorScheme } from "@mui/material/styles";
 import DarkModeRounded from "@mui/icons-material/DarkModeRounded";
@@ -24,9 +26,13 @@ export default function ColorSchemeToggle() {
   const t = useTranslations("ColorScheme");
   const { mode, setMode } = useColorScheme();
 
-  // `mode` is undefined until mounted — keep the slot to avoid layout shift and hydration mismatch.
+  // `mode` is undefined until mounted — render a skeleton of the button's size to avoid layout shift and hydration mismatch.
   if (!mode) {
-    return <IconButton disabled aria-hidden sx={{ visibility: "hidden" }} />;
+    return (
+      <Box sx={{ p: 1 }}>
+        <Skeleton variant="circular" width={24} height={24} />
+      </Box>
+    );
   }
 
   const Icon = ICONS[mode];

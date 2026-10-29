@@ -108,6 +108,8 @@ Authentication secrets must never be hard-coded.
 
 The backend must expose only the required authentication endpoints through the appropriate gateway/API boundary.
 
+Only the Auth Service reads sessions. Other services must not call it per request: they authenticate requests by a short-lived JWT access token issued by the Auth Service (Better Auth `jwt` plugin, `GET /api/auth/token`) and sent as `Authorization: Bearer`. Services verify the signature, `exp`, `iss` and `aud` locally against the Auth Service's public keys (`GET /api/auth/jwks`, cached, re-fetched only for an unknown `kid`). Token lifetime is short (15 minutes), because sign-out does not revoke tokens already issued.
+
 ---
 
 ## 5. Registration Email
@@ -493,6 +495,15 @@ Current approach — no generic `processed_events` table; each consumer dedupes 
 - Notifications: `email_deliveries` has a unique `(source_event_id, kind)` key, so a redelivered event cannot send a second email.
 
 Add a `processed_events (event_id, consumer, processed_at)` table only for a consumer that has no such natural key.
+
+---
+
+### Implemented event contracts (`packages/contracts`)
+
+- `UserRegistered` → `auth.events`, key = userId: `{ userId, email, name, image, emailVerified, createdAt }`.
+- `BoardCreated` → `board.events`, key = boardId, version 1: `{ boardId, title, description, owner: { userId, email, name, image } }`. The owner snapshot lets the boards projection satisfy its `users` FK even before `UserRegistered` is consumed or after it ages out of `auth.events`.
+
+`POST /api/boards` publishes `BoardCreated` and waits (up to 5 s) for the boards projection to apply it: `201` with the board, or `202 { boardId }` if it is still catching up.
 
 ---
 
