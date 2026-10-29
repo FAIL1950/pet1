@@ -101,26 +101,68 @@
     "addCard": "Add card",
     "emptyBoard": "This board has no columns yet.",
     "emptyColumn": "No cards",
-    "columnActions": "Column {title}"
+    "columnActions": "Column {title}",
+    "itemMenu": "Actions: {title}",
+    "edit": "Edit",
+    "delete": "Delete",
+    "dragColumn": "Drag column {title}"
   },
-  "CreateColumnDialog": {
-    "title": "New column",
+  "BoardInfo": {
+    "title": "Board name",
+    "role": "Role",
+    "description": "Description",
+    "noDescription": "No description"
+  },
+  "ColumnDialog": {
+    "createTitle": "New column",
+    "editTitle": "Edit column",
     "name": "Name",
     "cancel": "Cancel",
-    "submit": "Add"
+    "create": "Add",
+    "save": "Save"
   },
-  "CreateCardDialog": {
-    "title": "New card",
+  "CardDialog": {
+    "createTitle": "New card",
+    "editTitle": "Edit card",
     "name": "Title",
     "description": "Description",
     "cancel": "Cancel",
-    "submit": "Add"
+    "create": "Add",
+    "save": "Save"
+  },
+  "ConfirmDelete": {
+    "columnTitle": "Delete column?",
+    "columnText": "The column “{title}” and all its cards will be deleted.",
+    "cardTitle": "Delete card?",
+    "cardText": "The card “{title}” will be deleted.",
+    "cancel": "Cancel",
+    "confirm": "Delete"
+  },
+  "BoardMembers": {
+    "open": "Members",
+    "title": "Board members",
+    "email": "Email",
+    "role": "Role",
+    "add": "Add",
+    "close": "Close",
+    "you": "you",
+    "remove": "Remove {name}",
+    "leave": "Leave board",
+    "removeTitle": "Remove member?",
+    "removeText": "{name} will lose access to this board.",
+    "leaveTitle": "Leave board?",
+    "leaveText": "You will lose access to this board until the owner adds you again.",
+    "cancel": "Cancel",
+    "confirmRemove": "Remove",
+    "confirmLeave": "Leave"
   },
   "BoardsApiErrors": {
     "unauthorized": "Your session has expired — please sign in again",
     "forbidden": "You don't have permission to change this board",
     "notFound": "The board or column no longer exists",
     "network": "Couldn't reach the server. Check your connection and try again.",
-    "generic": "Something went wrong. Please try again."
+    "generic": "Something went wrong. Please try again.",
+    "userNotFound": "No user with this email. They need to sign up first.",
+    "alreadyMember": "This user is already a member of the board"
   }
 }

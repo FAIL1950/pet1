@@ -409,7 +409,12 @@ Implemented (`services/boards`, all under `/api`, JWT required):
 - `GET /api/boards` — boards the caller is a member of (`{ id, title, description, role, createdAt }[]`, newest first).
 - `GET /api/boards/:boardId` — the board with `role`, `version` and `columns[]` (each with `cards[]`), both ordered by `position`; `404` if it doesn't exist or the caller isn't a member.
 - `POST /api/boards` — create a board (caller becomes `OWNER`).
-- `POST /api/boards/:boardId/columns` — append a column (`{ title }`); `POST /api/boards/:boardId/columns/:columnId/cards` — append a card (`{ title, description? }`). `OWNER`/`EDITOR` only (`403`), `404` for non-members or a column of another board. Each locks the board row, bumps `boards.version` and publishes `ColumnCreated` / `CardCreated`.
+- `POST /api/boards/:boardId/columns` — append a column (`{ title }`); `POST /api/boards/:boardId/columns/:columnId/cards` — append a card (`{ title, description? }`). `OWNER`/`EDITOR` only (`403`), `404` for non-members or a column of another board.
+- `PATCH /api/boards/:boardId/columns/:columnId` (`{ title }`), `DELETE …/columns/:columnId` (`204`, cards cascade), `POST …/columns/:columnId/move` (`{ afterColumnId: uuid | null }`, null = first).
+- `PATCH /api/boards/:boardId/cards/:cardId` (`{ title, description? }`), `DELETE …/cards/:cardId` (`204`), `POST …/cards/:cardId/move` (`{ columnId, afterCardId: uuid | null }`).
+- Moves name the neighbour, not an index: the server places the item between the neighbour and the next item (`positionBetween`), so a move is one row update.
+- `GET /api/boards/:boardId/members` (any member; OWNER first) → `{ userId, email, name, image, role, addedAt }[]`; `POST …/members` `{ email, role: EDITOR | VIEWER }` (OWNER; `422` no registered user with that email, `409` already a member); `PATCH …/members/:userId` `{ role }` (OWNER; `409` for the OWNER); `DELETE …/members/:userId` (`204`; the OWNER removes anyone but themselves, any other member may remove themselves = leave the board).
+- Every column/card/member write locks the board row, bumps `boards.version` and publishes one event (`ColumnCreated|Updated|Moved|Deleted`, `CardCreated|Updated|Moved|Deleted`).
 
 ---
 
@@ -506,6 +511,7 @@ Add a `processed_events (event_id, consumer, processed_at)` table only for a con
 - `UserRegistered` → `auth.events`, key = userId: `{ userId, email, name, image, emailVerified, createdAt }`.
 - `ColumnCreated` → `board.events`, key = boardId, version = the board's new version: `{ boardId, columnId, title, position }`.
 - `CardCreated` → `board.events`, key = boardId, version = the board's new version: `{ boardId, columnId, cardId, title, description, position, createdBy }`.
+- `ColumnUpdated { boardId, columnId, title }`, `ColumnMoved { boardId, columnId, position }`, `ColumnDeleted { boardId, columnId }` (its cards go with it, no CardDeleted), `CardUpdated { boardId, cardId, title, description }`, `CardMoved { boardId, cardId, fromColumnId, toColumnId, position }`, `CardDeleted { boardId, cardId, columnId }`, `BoardMemberAdded { boardId, userId, role }`, `BoardMemberRoleChanged { boardId, userId, role }`, `BoardMemberRemoved { boardId, userId }` — all on `board.events`, key = boardId, version = the board's new version.
 - `BoardCreated` → `board.events`, key = boardId, version 1: `{ boardId, title, description, owner: { userId, email, name, image } }`. The owner snapshot lets consumers know the owner without the auth DB.
 
 `POST /api/boards` writes the board, the OWNER membership and the `BoardCreated` outbox row in one transaction and answers `201` with the board; the relay publishes the event shortly after.

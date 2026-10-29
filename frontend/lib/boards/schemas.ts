@@ -30,3 +30,11 @@ export const createCardSchema = z.object({
 });
 
 export type CreateCardValues = z.infer<typeof createCardSchema>;
+
+// Same email rule as sign-in/sign-up; the role is one the OWNER can grant.
+export const addMemberSchema = z.object({
+  email: requiredString.pipe(z.email({ error: "email" satisfies ValidationKey })),
+  role: z.enum(["EDITOR", "VIEWER"]),
+});
+
+export type AddMemberValues = z.infer<typeof addMemberSchema>;

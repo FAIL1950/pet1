@@ -11,6 +11,8 @@ import {
 } from '@app/common';
 import { BoardCommandsService } from './boards/board-commands.service.js';
 import { BoardQueriesService } from './boards/board-queries.service.js';
+import { BoardMembersController } from './boards/members/board-members.controller.js';
+import { BoardMembersService } from './boards/members/board-members.service.js';
 import { BoardsApiController } from './boards/boards-api.controller.js';
 import { BoardsController } from './boards.controller.js';
 import { BoardsService } from './boards.service.js';
@@ -18,6 +20,8 @@ import { config } from './config.js';
 import { dataSourceOptions } from './database/options.js';
 import { typeOrmOutboxStore } from './database/outbox-store.js';
 import { BoardContentRepository } from './database/repositories/board-content.repository.js';
+import { BoardMembersRepository } from './database/repositories/board-members.repository.js';
+import { BoardWriteRunner } from './database/repositories/board-write.js';
 import { BoardsRepository } from './database/repositories/boards.repository.js';
 import { OutboxMessagesRepository } from './database/repositories/outbox-messages.repository.js';
 import { UsersRepository } from './database/repositories/users.repository.js';
@@ -32,7 +36,7 @@ import { UsersProjectionHandler } from './projection/users-projection.handler.js
     // Applies pending migrations before the app starts serving.
     TypeOrmModule.forRoot({ ...dataSourceOptions, migrationsRun: true }),
   ],
-  controllers: [BoardsController, BoardsApiController],
+  controllers: [BoardsController, BoardsApiController, BoardMembersController],
   providers: [
     BoardsService,
     { provide: KAFKA_OPTIONS, useValue: config.kafka },
@@ -45,7 +49,9 @@ import { UsersProjectionHandler } from './projection/users-projection.handler.js
     },
     UsersRepository,
     BoardsRepository,
+    BoardWriteRunner,
     BoardContentRepository,
+    BoardMembersRepository,
     OutboxMessagesRepository,
     OutboxRepository,
     KafkaProducerService,
@@ -53,6 +59,7 @@ import { UsersProjectionHandler } from './projection/users-projection.handler.js
     JwtAuthGuard,
     BoardCommandsService,
     BoardQueriesService,
+    BoardMembersService,
     UsersProjectionHandler,
     UsersProjectionConsumer,
   ],

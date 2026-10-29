@@ -6,24 +6,25 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import FormDialog from "@/components/form/FormDialog";
 import FormTextField from "@/components/form/FormTextField";
-import { createCard } from "@/lib/boards/api";
+import { createColumn, updateColumn } from "@/lib/boards/api";
 import { boardsApiErrorKey, type BoardsApiErrorKey } from "@/lib/boards/errors";
 import {
-  CARD_DESCRIPTION_MAX_LENGTH,
-  CARD_TITLE_MAX_LENGTH,
-  createCardSchema,
-  type CreateCardValues,
+  COLUMN_TITLE_MAX_LENGTH,
+  createColumnSchema,
+  type CreateColumnValues,
 } from "@/lib/boards/schemas";
+import type { BoardColumn } from "@/lib/boards/types";
 
-type CreateCardDialogProps = {
+type ColumnDialogProps = {
   boardId: string;
-  /** Column the card is added to; the dialog is open while it's set. */
-  columnId: string | null;
+  /** The column to edit; omit to create a new one. Remount (key) the dialog per column. */
+  column?: BoardColumn;
+  open: boolean;
   onClose: () => void;
 };
 
-export default function CreateCardDialog({ boardId, columnId, onClose }: CreateCardDialogProps) {
-  const t = useTranslations("CreateCardDialog");
+export default function ColumnDialog({ boardId, column, open, onClose }: ColumnDialogProps) {
+  const t = useTranslations("ColumnDialog");
   const tErrors = useTranslations("BoardsApiErrors");
   const router = useRouter();
   const {
@@ -32,17 +33,17 @@ export default function CreateCardDialog({ boardId, columnId, onClose }: CreateC
     setError,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<CreateCardValues>({
-    resolver: zodResolver(createCardSchema),
-    defaultValues: { title: "", description: "" },
+  } = useForm<CreateColumnValues>({
+    resolver: zodResolver(createColumnSchema),
+    defaultValues: { title: column?.title ?? "" },
     mode: "onTouched",
   });
 
-  const onSubmit = async (values: CreateCardValues) => {
-    if (!columnId) return;
+  const onSubmit = async (values: CreateColumnValues) => {
     try {
-      await createCard(boardId, columnId, values);
-      // Re-renders the board page on the server with the new card.
+      if (column) await updateColumn(boardId, column.id, values);
+      else await createColumn(boardId, values);
+      // Re-renders the board page on the server with the change.
       router.refresh();
       onClose();
     } catch (error) {
@@ -54,11 +55,11 @@ export default function CreateCardDialog({ boardId, columnId, onClose }: CreateC
 
   return (
     <FormDialog
-      open={columnId !== null}
+      open={open}
       onClose={onClose}
       onExited={() => reset()}
-      title={t("title")}
-      submitLabel={t("submit")}
+      title={t(column ? "editTitle" : "createTitle")}
+      submitLabel={t(column ? "save" : "create")}
       cancelLabel={t("cancel")}
       onSubmit={handleSubmit(onSubmit)}
       busy={isSubmitting}
@@ -71,16 +72,7 @@ export default function CreateCardDialog({ boardId, columnId, onClose }: CreateC
         required
         fullWidth
         autoFocus
-        slotProps={{ htmlInput: { maxLength: CARD_TITLE_MAX_LENGTH } }}
-      />
-      <FormTextField
-        control={control}
-        name="description"
-        label={t("description")}
-        fullWidth
-        multiline
-        minRows={3}
-        slotProps={{ htmlInput: { maxLength: CARD_DESCRIPTION_MAX_LENGTH } }}
+        slotProps={{ htmlInput: { maxLength: COLUMN_TITLE_MAX_LENGTH } }}
       />
     </FormDialog>
   );

@@ -34,22 +34,34 @@ spec:
             # Server Components load boards from the boards Service directly (lib/boards/server.ts).
             - name: BOARDS_INTERNAL_URL
               value: http://boards
+          # The pod runs `next dev` (Turbopack, under Bun) and compiles routes on demand: it sits at
+          # ~450Mi right after start and grows as routes compile; 768Mi got it OOMKilled (→ 502).
           resources:
             requests:
               cpu: 100m
-              memory: 256Mi
-            limits:
-              cpu: 500m
               memory: 768Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          # Compiling a route takes seconds and blocks responses; generous timeouts keep that from
+          # failing probes and restarting the pod.
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /
               port: http
-            initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /
               port: http
-            initialDelaySeconds: 15
             periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6

@@ -12,18 +12,16 @@ import type { Board } from '../database/entities/board.entity.js';
 import type { Card } from '../database/entities/card.entity.js';
 import type {
   BoardContentRepository,
-  BoardWriteResult,
   NewCard,
   NewColumn,
 } from '../database/repositories/board-content.repository.js';
+import type { BoardWriteResult } from '../database/repositories/board-write.js';
 import type {
   BoardsRepository,
   NewBoard,
 } from '../database/repositories/boards.repository.js';
-import {
-  BoardCommandsService,
-  toBoardCreatedEvent,
-} from './board-commands.service.js';
+import { BoardCommandsService } from './board-commands.service.js';
+import { toBoardCreatedEvent } from './board-events.js';
 
 const user: AuthUser = {
   id: 'user-1',
@@ -210,5 +208,115 @@ describe('BoardCommandsService.createCard', () => {
         },
       }),
     );
+  });
+});
+
+describe('BoardCommandsService column/card edits', () => {
+  // Each command delegates to its repository method and emits its event for the written item.
+  const cases = [
+    {
+      name: 'updateColumn',
+      repo: 'updateColumn',
+      call: (s: BoardCommandsService) =>
+        s.updateColumn(user, 'board-1', 'column-1', { title: 'Doing' }),
+      args: { columnId: 'column-1', changes: { title: 'Doing' } },
+      written: column,
+      eventType: 'ColumnUpdated',
+    },
+    {
+      name: 'moveColumn',
+      repo: 'moveColumn',
+      call: (s: BoardCommandsService) =>
+        s.moveColumn(user, 'board-1', 'column-1', { afterColumnId: null }),
+      args: { columnId: 'column-1', afterColumnId: null },
+      written: column,
+      eventType: 'ColumnMoved',
+    },
+    {
+      name: 'deleteColumn',
+      repo: 'deleteColumn',
+      call: (s: BoardCommandsService) =>
+        s.deleteColumn(user, 'board-1', 'column-1'),
+      args: { columnId: 'column-1' },
+      written: column,
+      eventType: 'ColumnDeleted',
+    },
+    {
+      name: 'updateCard',
+      repo: 'updateCard',
+      call: (s: BoardCommandsService) =>
+        s.updateCard(user, 'board-1', 'card-1', {
+          title: 'Fixed',
+          description: 'x',
+        }),
+      args: { cardId: 'card-1', changes: { title: 'Fixed', description: 'x' } },
+      written: card,
+      eventType: 'CardUpdated',
+    },
+    {
+      name: 'moveCard',
+      repo: 'moveCard',
+      call: (s: BoardCommandsService) =>
+        s.moveCard(user, 'board-1', 'card-1', {
+          columnId: 'column-2',
+          afterCardId: null,
+        }),
+      args: { cardId: 'card-1', columnId: 'column-2', afterCardId: null },
+      written: { card, fromColumnId: 'column-0' },
+      eventType: 'CardMoved',
+    },
+    {
+      name: 'deleteCard',
+      repo: 'deleteCard',
+      call: (s: BoardCommandsService) =>
+        s.deleteCard(user, 'board-1', 'card-1'),
+      args: { cardId: 'card-1' },
+      written: card,
+      eventType: 'CardDeleted',
+    },
+  ] as const;
+
+  it.each(cases)(
+    '$name writes through $repo and emits $eventType',
+    async ({ repo, call, args, written, eventType }) => {
+      const method = vi.fn(
+        async (write: {
+          toEvents: (w: unknown, v: number) => { event: string }[];
+        }) => {
+          const [message] = write.toEvents(written, 9);
+          expect(JSON.parse(message.event)).toMatchObject({
+            eventType,
+            aggregateId: 'board-1',
+            version: 9,
+          });
+          return { status: 'ok', value: written };
+        },
+      );
+
+      await call(contentService({ [repo]: method }));
+
+      expect(method).toHaveBeenCalledWith(
+        expect.objectContaining({
+          boardId: 'board-1',
+          userId: 'user-1',
+          allowedRoles: [BoardRole.OWNER, BoardRole.EDITOR],
+          ...args,
+        }),
+      );
+    },
+  );
+
+  it('maps forbidden to 403 for deletes too', async () => {
+    const deleteCard = vi.fn(async () => ({ status: 'forbidden' }) as const);
+
+    await expect(
+      contentService({
+        deleteCard,
+      } as Partial<BoardContentRepository>).deleteCard(
+        user,
+        'board-1',
+        'card-1',
+      ),
+    ).rejects.toThrow(ForbiddenException);
   });
 });

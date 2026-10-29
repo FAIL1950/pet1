@@ -37,6 +37,16 @@ export type BoardDetails = BoardSummary & {
   columns: BoardColumnWithCards[];
 };
 
+/** `GET /api/boards/:boardId/members`, the OWNER first. */
+export type BoardMember = {
+  userId: string;
+  email: string;
+  name: string;
+  image: string | null;
+  role: BoardRole;
+  addedAt: string;
+};
+
 /** Roles that may add columns and cards; the server enforces the same rule. */
 export function canEditContent(role: BoardRole): boolean {
   return role === "OWNER" || role === "EDITOR";

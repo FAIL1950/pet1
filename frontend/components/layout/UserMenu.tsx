@@ -15,15 +15,7 @@ import LogoutRounded from "@mui/icons-material/LogoutRounded";
 import { authClient } from "@/lib/auth/client";
 import { clearAccessToken } from "@/lib/auth/token";
 import type { SessionUser } from "@/lib/auth/session";
-
-function initials({ name, email }: SessionUser): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return email.charAt(0).toUpperCase();
-  return words
-    .slice(0, 2)
-    .map((word) => word.charAt(0).toUpperCase())
-    .join("");
-}
+import { initials } from "@/lib/users/initials";
 
 export default function UserMenu({ user }: { user: SessionUser }) {
   const t = useTranslations("Nav");
