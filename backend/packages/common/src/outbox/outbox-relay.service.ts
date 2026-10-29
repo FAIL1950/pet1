@@ -1,6 +1,5 @@
 import {
   BeforeApplicationShutdown,
-  Inject,
   Injectable,
   Logger,
   OnApplicationBootstrap,
@@ -10,38 +9,22 @@ import {
   KafkaProducerService,
   type KafkaTopicMessages,
 } from '../kafka/kafka-producer.service.js';
-import { OUTBOX_STORE, type OutboxStore } from './outbox.js';
+import type { OutboxMessage } from './outbox.js';
+import { OutboxRepository } from './outbox.repository.js';
 
 export const OUTBOX_BATCH_SIZE = 100;
 export const OUTBOX_IDLE_DELAY_MS = 250;
 export const OUTBOX_MIN_BACKOFF_MS = 1000;
 export const OUTBOX_MAX_BACKOFF_MS = 30_000;
 
-// Only one relay per database at a time (across replicas), so per-key order survives scaling out.
-const LOCK_SQL = `SELECT pg_try_advisory_xact_lock(hashtext('outbox-relay')) AS locked`;
-const SELECT_SQL = `SELECT id, topic, "key", event_type, event FROM outbox ORDER BY created_at, id LIMIT $1`;
-const DELETE_SQL = `DELETE FROM outbox WHERE id = ANY($1)`;
-
-interface OutboxRow {
-  id: string;
-  topic: string;
-  key: string;
-  event_type: string;
-  event: string;
-}
-
-/** Groups rows into per-topic batches, keeping their order. */
-function toTopicMessages(rows: OutboxRow[]): KafkaTopicMessages[] {
+/** Groups messages into per-topic batches, keeping their order. */
+function toTopicMessages(messages: OutboxMessage[]): KafkaTopicMessages[] {
   const batches: KafkaTopicMessages[] = [];
-  for (const row of rows) {
-    const message = {
-      key: row.key,
-      value: row.event,
-      headers: { eventType: row.event_type },
-    };
+  for (const { topic, key, eventType, event } of messages) {
+    const message = { key, value: event, headers: { eventType } };
     const last = batches.at(-1);
-    if (last?.topic === row.topic) last.messages.push(message);
-    else batches.push({ topic: row.topic, messages: [message] });
+    if (last?.topic === topic) last.messages.push(message);
+    else batches.push({ topic, messages: [message] });
   }
   return batches;
 }
@@ -60,7 +43,7 @@ export class OutboxRelay
   private loop: Promise<void> | null = null;
 
   constructor(
-    @Inject(OUTBOX_STORE) private readonly store: OutboxStore,
+    private readonly outbox: OutboxRepository,
     private readonly kafka: KafkaProducerService,
   ) {}
 
@@ -75,20 +58,10 @@ export class OutboxRelay
   }
 
   /** Publishes one batch; returns how many rows were published (0 if another relay holds the lock). */
-  async relayBatch(): Promise<number> {
-    return this.store.withTransaction(async (query) => {
-      const [{ locked }] = await query(LOCK_SQL);
-      if (!locked) return 0;
-
-      const rows = (await query(SELECT_SQL, [
-        OUTBOX_BATCH_SIZE,
-      ])) as unknown as OutboxRow[];
-      if (rows.length === 0) return 0;
-
-      await this.kafka.sendBatch(toTopicMessages(rows));
-      await query(DELETE_SQL, [rows.map((row) => row.id)]);
-      return rows.length;
-    });
+  relayBatch(): Promise<number> {
+    return this.outbox.processBatch(OUTBOX_BATCH_SIZE, (messages) =>
+      this.kafka.sendBatch(toTopicMessages(messages)),
+    );
   }
 
   private async run() {

@@ -1,11 +1,11 @@
 import { USER_REGISTERED, type UserRegisteredEvent } from '@app/contracts';
-import type { DataSource } from 'typeorm';
+import type { UsersRepository } from '../database/repositories/users.repository.js';
 import { UsersProjectionHandler } from './users-projection.handler.js';
 
 function setup() {
   const upsert = vi.fn().mockResolvedValue(undefined);
-  const dataSource = { manager: { upsert } } as unknown as DataSource;
-  return { handler: new UsersProjectionHandler(dataSource), upsert };
+  const users = { upsert } as unknown as UsersRepository;
+  return { handler: new UsersProjectionHandler(users), upsert };
 }
 
 const userRegistered: UserRegisteredEvent = {
@@ -31,16 +31,12 @@ describe('UsersProjectionHandler', () => {
 
     await handler.apply(userRegistered);
 
-    expect(upsert).toHaveBeenCalledWith(
-      expect.anything(),
-      {
-        id: 'user-1',
-        email: 'a@example.com',
-        name: 'Alice',
-        image: 'https://example.com/a.png',
-      },
-      ['id'],
-    );
+    expect(upsert).toHaveBeenCalledWith({
+      id: 'user-1',
+      email: 'a@example.com',
+      name: 'Alice',
+      image: 'https://example.com/a.png',
+    });
   });
 
   it('ignores other events', async () => {

@@ -31,6 +31,9 @@ spec:
             # Server-side session checks call the auth Service directly (lib/auth/session.ts).
             - name: AUTH_INTERNAL_URL
               value: http://auth
+            # Server Components load boards from the boards Service directly (lib/boards/server.ts).
+            - name: BOARDS_INTERNAL_URL
+              value: http://boards
           resources:
             requests:
               cpu: 100m

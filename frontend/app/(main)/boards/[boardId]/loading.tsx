@@ -3,6 +3,7 @@ import Skeleton from "@mui/material/Skeleton";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { useTranslations } from "next-intl";
+import { COLUMN_WIDTH } from "@/components/boards/constants";
 
 // Cards per placeholder column; varied so the skeleton doesn't look like a grid.
 const COLUMN_CARD_COUNTS = [3, 2, 4];
@@ -23,7 +24,7 @@ export default function Loading() {
 
       <Stack direction="row" sx={{ gap: 2, alignItems: "flex-start" }}>
         {COLUMN_CARD_COUNTS.map((cardCount, column) => (
-          <Stack key={column} sx={{ width: 272, flexShrink: 0, gap: 1 }}>
+          <Stack key={column} sx={{ width: COLUMN_WIDTH, flexShrink: 0, gap: 1 }}>
             <Skeleton variant="text" width="60%" />
             {Array.from({ length: cardCount }, (_, card) => (
               <Skeleton key={card} variant="rounded" height={72} />

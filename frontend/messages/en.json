@@ -80,21 +80,47 @@
   },
   "BoardsPage": {
     "title": "Boards",
-    "create": "Create new board"
+    "create": "Create new board",
+    "empty": "You have no boards yet. Create the first one."
+  },
+  "BoardRole": {
+    "OWNER": "Owner",
+    "EDITOR": "Editor",
+    "VIEWER": "Viewer"
   },
   "CreateBoardDialog": {
     "title": "New board",
     "name": "Name",
     "description": "Description",
     "cancel": "Cancel",
-    "submit": "Create",
-    "errors": {
-      "unauthorized": "Your session has expired — please sign in again",
-      "network": "Couldn't reach the server. Check your connection and try again.",
-      "generic": "Something went wrong. Please try again."
-    }
+    "submit": "Create"
   },
   "BoardPage": {
-    "title": "Board"
+    "title": "Board",
+    "addColumn": "Add column",
+    "addCard": "Add card",
+    "emptyBoard": "This board has no columns yet.",
+    "emptyColumn": "No cards",
+    "columnActions": "Column {title}"
+  },
+  "CreateColumnDialog": {
+    "title": "New column",
+    "name": "Name",
+    "cancel": "Cancel",
+    "submit": "Add"
+  },
+  "CreateCardDialog": {
+    "title": "New card",
+    "name": "Title",
+    "description": "Description",
+    "cancel": "Cancel",
+    "submit": "Add"
+  },
+  "BoardsApiErrors": {
+    "unauthorized": "Your session has expired — please sign in again",
+    "forbidden": "You don't have permission to change this board",
+    "notFound": "The board or column no longer exists",
+    "network": "Couldn't reach the server. Check your connection and try again.",
+    "generic": "Something went wrong. Please try again."
   }
 }

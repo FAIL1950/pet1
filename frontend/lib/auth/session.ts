@@ -31,6 +31,26 @@ export const getSession = cache(async (): Promise<Session | null> => {
   }
 });
 
+/**
+ * Access token (JWT) for server-side calls to backend services, issued by the auth Service for
+ * the request's session cookie; `null` when signed out or auth is unreachable. Per request.
+ */
+export const getServerAccessToken = cache(async (): Promise<string | null> => {
+  const cookie = (await headers()).get("cookie");
+  if (!cookie) return null;
+  try {
+    const res = await fetch(`${AUTH_INTERNAL_URL}/api/auth/token`, {
+      headers: { cookie },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const { token } = (await res.json()) as { token?: string };
+    return token ?? null;
+  } catch {
+    return null;
+  }
+});
+
 export async function requireSession(callbackPath?: string): Promise<Session> {
   const session = await getSession();
   if (!session) redirect(signInUrl(callbackPath));

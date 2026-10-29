@@ -1,18 +1,14 @@
 import { clearAccessToken, getAccessToken } from "@/lib/auth/token";
-import type { CreateBoardValues } from "./schemas";
+import type { CreateBoardValues, CreateCardValues, CreateColumnValues } from "./schemas";
+import type { BoardCard, BoardColumn, BoardSummary } from "./types";
 
-export type BoardRole = "OWNER" | "EDITOR" | "VIEWER";
-
-/** `201 Created` from `POST /api/boards`. */
-export type BoardResponse = {
-  id: string;
-  title: string;
-  description: string | null;
-  role: BoardRole;
-  createdAt: string;
-};
-
-export type BoardsApiErrorCode = "unauthorized" | "validation" | "network" | "generic";
+export type BoardsApiErrorCode =
+  | "unauthorized"
+  | "forbidden"
+  | "notFound"
+  | "validation"
+  | "network"
+  | "generic";
 
 export class BoardsApiError extends Error {
   constructor(readonly code: BoardsApiErrorCode) {
@@ -23,6 +19,8 @@ export class BoardsApiError extends Error {
 
 function errorCodeForStatus(status: number): BoardsApiErrorCode {
   if (status === 401) return "unauthorized";
+  if (status === 403) return "forbidden";
+  if (status === 404) return "notFound";
   if (status === 400) return "validation";
   return "generic";
 }
@@ -51,16 +49,35 @@ async function boardsFetch(path: string, init: RequestInit): Promise<Response> {
   }
 }
 
-export async function createBoard(values: CreateBoardValues): Promise<{ boardId: string }> {
-  const res = await boardsFetch("/api/boards", {
+/** POSTs JSON and returns the `201` body; any other status becomes a `BoardsApiError`. */
+async function boardsPost<T>(path: string, body: unknown): Promise<T> {
+  const res = await boardsFetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(values),
+    body: JSON.stringify(body),
   });
+  if (res.status !== 201) throw new BoardsApiError(errorCodeForStatus(res.status));
+  return (await res.json()) as T;
+}
 
-  if (res.status === 201) {
-    const board = (await res.json()) as BoardResponse;
-    return { boardId: board.id };
-  }
-  throw new BoardsApiError(errorCodeForStatus(res.status));
+export async function createBoard(values: CreateBoardValues): Promise<{ boardId: string }> {
+  const board = await boardsPost<BoardSummary>("/api/boards", values);
+  return { boardId: board.id };
+}
+
+/** Appends a column to the board (OWNER/EDITOR). */
+export function createColumn(boardId: string, values: CreateColumnValues): Promise<BoardColumn> {
+  return boardsPost(`/api/boards/${encodeURIComponent(boardId)}/columns`, values);
+}
+
+/** Appends a card to the column (OWNER/EDITOR). */
+export function createCard(
+  boardId: string,
+  columnId: string,
+  values: CreateCardValues,
+): Promise<BoardCard> {
+  return boardsPost(
+    `/api/boards/${encodeURIComponent(boardId)}/columns/${encodeURIComponent(columnId)}/cards`,
+    values,
+  );
 }

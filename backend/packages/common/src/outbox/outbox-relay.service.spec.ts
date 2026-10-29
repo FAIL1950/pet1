@@ -1,53 +1,55 @@
 import type { KafkaProducerService } from '../kafka/kafka-producer.service.js';
-import { OutboxRelay } from './outbox-relay.service.js';
-import type { OutboxQuery, OutboxStore } from './outbox.js';
+import { OUTBOX_BATCH_SIZE, OutboxRelay } from './outbox-relay.service.js';
+import type { OutboxMessage } from './outbox.js';
+import type { OutboxRepository } from './outbox.repository.js';
 
-const rows = [
+const messages: OutboxMessage[] = [
   {
     id: 'e-1',
     topic: 'board.events',
     key: 'b-1',
-    event_type: 'BoardCreated',
+    eventType: 'BoardCreated',
     event: '{"n":1}',
   },
   {
     id: 'e-2',
     topic: 'board.events',
     key: 'b-2',
-    event_type: 'BoardCreated',
+    eventType: 'BoardCreated',
     event: '{"n":2}',
   },
   {
     id: 'e-3',
     topic: 'auth.events',
     key: 'u-1',
-    event_type: 'UserRegistered',
+    eventType: 'UserRegistered',
     event: '{"n":3}',
   },
 ];
 
-function setup({
-  locked = true,
-  sendBatch = vi.fn().mockResolvedValue(undefined),
-} = {}) {
-  const query = vi.fn<OutboxQuery>(async (sql) => {
-    if (sql.includes('pg_try_advisory_xact_lock')) return [{ locked }];
-    if (sql.startsWith('SELECT')) return rows;
-    return [];
-  });
-  const store: OutboxStore = { withTransaction: (work) => work(query) };
-  const relay = new OutboxRelay(store, {
-    sendBatch,
-  } as unknown as KafkaProducerService);
-  return { relay, query, sendBatch };
-}
-
 describe('OutboxRelay.relayBatch', () => {
-  it('publishes rows in order, grouped by topic, then deletes them', async () => {
-    const { relay, query, sendBatch } = setup();
+  it('sends a batch to Kafka grouped by topic, keeping the order', async () => {
+    const processBatch = vi.fn(
+      async (
+        _limit: number,
+        publish: (m: OutboxMessage[]) => Promise<void>,
+      ) => {
+        await publish(messages);
+        return messages.length;
+      },
+    );
+    const sendBatch = vi.fn().mockResolvedValue(undefined);
+    const relay = new OutboxRelay(
+      { processBatch } as unknown as OutboxRepository,
+      { sendBatch } as unknown as KafkaProducerService,
+    );
 
     await expect(relay.relayBatch()).resolves.toBe(3);
 
+    expect(processBatch).toHaveBeenCalledWith(
+      OUTBOX_BATCH_SIZE,
+      expect.any(Function),
+    );
     expect(sendBatch).toHaveBeenCalledWith([
       {
         topic: 'board.events',
@@ -75,28 +77,5 @@ describe('OutboxRelay.relayBatch', () => {
         ],
       },
     ]);
-    expect(query).toHaveBeenLastCalledWith(expect.stringContaining('DELETE'), [
-      ['e-1', 'e-2', 'e-3'],
-    ]);
-  });
-
-  it('keeps the rows when Kafka fails', async () => {
-    const { relay, query } = setup({
-      sendBatch: vi.fn().mockRejectedValue(new Error('broker down')),
-    });
-
-    await expect(relay.relayBatch()).rejects.toThrow('broker down');
-    expect(query).not.toHaveBeenCalledWith(
-      expect.stringContaining('DELETE'),
-      expect.anything(),
-    );
-  });
-
-  it('does nothing while another relay holds the lock', async () => {
-    const { relay, query, sendBatch } = setup({ locked: false });
-
-    await expect(relay.relayBatch()).resolves.toBe(0);
-    expect(query).toHaveBeenCalledTimes(1);
-    expect(sendBatch).not.toHaveBeenCalled();
   });
 });

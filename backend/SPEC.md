@@ -402,7 +402,14 @@ PATCH  /boards/:boardId/columns/:columnId
 DELETE /boards/:boardId/columns/:columnId
 ```
 
-Commands should result in domain events rather than directly being treated as authoritative database mutations.
+Every command writes its domain event to the outbox in the same transaction as the change (§20).
+
+Implemented (`services/boards`, all under `/api`, JWT required):
+
+- `GET /api/boards` — boards the caller is a member of (`{ id, title, description, role, createdAt }[]`, newest first).
+- `GET /api/boards/:boardId` — the board with `role`, `version` and `columns[]` (each with `cards[]`), both ordered by `position`; `404` if it doesn't exist or the caller isn't a member.
+- `POST /api/boards` — create a board (caller becomes `OWNER`).
+- `POST /api/boards/:boardId/columns` — append a column (`{ title }`); `POST /api/boards/:boardId/columns/:columnId/cards` — append a card (`{ title, description? }`). `OWNER`/`EDITOR` only (`403`), `404` for non-members or a column of another board. Each locks the board row, bumps `boards.version` and publishes `ColumnCreated` / `CardCreated`.
 
 ---
 
@@ -497,6 +504,8 @@ Add a `processed_events (event_id, consumer, processed_at)` table only for a con
 ### Implemented event contracts (`packages/contracts`)
 
 - `UserRegistered` → `auth.events`, key = userId: `{ userId, email, name, image, emailVerified, createdAt }`.
+- `ColumnCreated` → `board.events`, key = boardId, version = the board's new version: `{ boardId, columnId, title, position }`.
+- `CardCreated` → `board.events`, key = boardId, version = the board's new version: `{ boardId, columnId, cardId, title, description, position, createdBy }`.
 - `BoardCreated` → `board.events`, key = boardId, version 1: `{ boardId, title, description, owner: { userId, email, name, image } }`. The owner snapshot lets consumers know the owner without the auth DB.
 
 `POST /api/boards` writes the board, the OWNER membership and the `BoardCreated` outbox row in one transaction and answers `201` with the board; the relay publishes the event shortly after.

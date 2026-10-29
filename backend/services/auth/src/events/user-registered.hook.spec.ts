@@ -1,6 +1,7 @@
+import type { OutboxMessage } from '@app/common';
 import { AUTH_EVENTS_TOPIC, USER_REGISTERED } from '@app/contracts';
 import type { DBAdapter, User } from 'better-auth';
-import { OUTBOX_MODEL } from './outbox.plugin.js';
+import type { OutboxMessagesRepository } from '../database/repositories/outbox-messages.repository.js';
 import {
   UserRegisteredHook,
   type HookContext,
@@ -15,33 +16,36 @@ const user: User = {
   updatedAt: new Date('2026-01-01T00:00:00.000Z'),
 };
 
-function setup(create = vi.fn().mockResolvedValue(undefined)) {
-  // Outside a transaction `getCurrentAdapter` falls back to the context's adapter.
-  const ctx: HookContext = {
-    context: { adapter: { create } as unknown as DBAdapter },
-  };
-  return { hook: new UserRegisteredHook(), ctx, create };
+const adapter = {} as DBAdapter;
+const ctx: HookContext = { context: { adapter } };
+
+function setup(
+  add = vi.fn<(m: OutboxMessage, a: DBAdapter | undefined) => Promise<void>>(
+    async () => undefined,
+  ),
+) {
+  const hook = new UserRegisteredHook({
+    add,
+  } as unknown as OutboxMessagesRepository);
+  return { hook, add };
 }
 
 describe('UserRegisteredHook', () => {
   it('writes UserRegistered to the outbox, keyed by user id', async () => {
-    const { hook, ctx, create } = setup();
+    const { hook, add } = setup();
 
     await expect(hook.onUserCreate(user, ctx)).resolves.toEqual({ data: user });
 
-    expect(create).toHaveBeenCalledTimes(1);
-    const { model, data, forceAllowId } = create.mock.calls[0][0];
-    expect(model).toBe(OUTBOX_MODEL);
-    expect(forceAllowId).toBe(true);
-    expect(data).toMatchObject({
+    expect(add).toHaveBeenCalledTimes(1);
+    const [message, fallback] = add.mock.calls[0];
+    expect(fallback).toBe(adapter);
+    expect(message).toMatchObject({
       topic: AUTH_EVENTS_TOPIC,
       key: 'user-1',
       eventType: USER_REGISTERED,
     });
-
-    const event = JSON.parse(data.event);
-    expect(data.id).toBe(event.eventId);
-    expect(event).toMatchObject({
+    expect(JSON.parse(message.event)).toMatchObject({
+      eventId: message.id,
       eventType: USER_REGISTERED,
       aggregateId: 'user-1',
       aggregateType: 'User',
@@ -58,21 +62,17 @@ describe('UserRegisteredHook', () => {
   });
 
   it('assigns the user id when Better Auth has not yet', async () => {
-    const { hook, ctx, create } = setup();
+    const { hook, add } = setup();
     const { id: _id, ...withoutId } = user;
 
     const { data } = await hook.onUserCreate(withoutId as User, ctx);
 
     expect(data.id).toEqual(expect.any(String));
-    expect(JSON.parse(create.mock.calls[0][0].data.event).aggregateId).toBe(
-      data.id,
-    );
+    expect(add.mock.calls[0][0].key).toBe(data.id);
   });
 
   it('fails the registration when the outbox cannot be written', async () => {
-    const { hook, ctx } = setup(
-      vi.fn().mockRejectedValue(new Error('db down')),
-    );
+    const { hook } = setup(vi.fn().mockRejectedValue(new Error('db down')));
 
     await expect(hook.onUserCreate(user, ctx)).rejects.toThrow('db down');
   });

@@ -34,7 +34,7 @@ export type OutboxQuery = (
   params?: unknown[],
 ) => Promise<Record<string, unknown>[]>;
 
-/** Runs relay SQL in one transaction of the service's database (TypeORM, pg, ...). */
+/** Runs `OutboxRepository` SQL in one transaction of the service's database (TypeORM, pg, ...). */
 export interface OutboxStore {
   withTransaction<T>(work: (query: OutboxQuery) => Promise<T>): Promise<T>;
 }

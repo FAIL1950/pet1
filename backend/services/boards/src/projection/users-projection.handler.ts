@@ -1,12 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
 import {
   USER_REGISTERED,
   type DomainEvent,
   type UserRegisteredEvent,
 } from '@app/contracts';
-import type { DataSource } from 'typeorm';
-import { User } from '../database/entities/user.entity.js';
+import { UsersRepository } from '../database/repositories/users.repository.js';
 
 /**
  * Applies auth events to the local `users` projection. Every handler is idempotent, because
@@ -16,7 +14,7 @@ import { User } from '../database/entities/user.entity.js';
 export class UsersProjectionHandler {
   private readonly logger = new Logger(UsersProjectionHandler.name);
 
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(private readonly users: UsersRepository) {}
 
   async apply(event: DomainEvent<unknown>): Promise<void> {
     switch (event.eventType) {
@@ -31,15 +29,11 @@ export class UsersProjectionHandler {
   private async onUserRegistered({
     payload,
   }: UserRegisteredEvent): Promise<void> {
-    await this.dataSource.manager.upsert(
-      User,
-      {
-        id: payload.userId,
-        email: payload.email,
-        name: payload.name,
-        image: payload.image ?? null,
-      },
-      ['id'],
-    );
+    await this.users.upsert({
+      id: payload.userId,
+      email: payload.email,
+      name: payload.name,
+      image: payload.image ?? null,
+    });
   }
 }

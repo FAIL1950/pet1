@@ -6,9 +6,9 @@ import {
   type UserRegisteredEvent,
 } from '@app/contracts';
 import { BeforeCreate, DatabaseHook } from '@thallesp/nestjs-better-auth';
-import { getCurrentAdapter, type DBAdapter, type User } from 'better-auth';
+import type { DBAdapter, User } from 'better-auth';
 import { randomUUID } from 'node:crypto';
-import { OUTBOX_MODEL } from './outbox.plugin.js';
+import { OutboxMessagesRepository } from '../database/repositories/outbox-messages.repository.js';
 
 export function toUserRegisteredEvent(user: User): UserRegisteredEvent {
   return {
@@ -39,36 +39,26 @@ export interface HookContext {
  * OAuth sign-in); `OutboxRelay` publishes it to `auth.events`.
  *
  * A `before` hook, because Better Auth runs it inside the sign-up transaction (`after` hooks
- * run after commit): `getCurrentAdapter` returns the transaction-bound adapter, so the user row
- * and the event commit or roll back together. The user id is assigned here, since the event
- * needs it before the insert. Were a user ever created outside a transaction, the outbox row
- * would still be written first, just not atomically.
+ * run after commit), so the user row and the event commit or roll back together (see
+ * `OutboxMessagesRepository`). The user id is assigned here, since the event needs it before
+ * the insert. Were a user ever created outside a transaction, the outbox row would still be
+ * written first, just not atomically.
  */
 @DatabaseHook()
 @Injectable()
 export class UserRegisteredHook {
+  constructor(private readonly outbox: OutboxMessagesRepository) {}
+
   @BeforeCreate('user')
   async onUserCreate(
     user: User & Record<string, unknown>,
     ctx: HookContext | null,
   ): Promise<{ data: User & Record<string, unknown> }> {
     const data = { ...user, id: (user as Partial<User>).id || randomUUID() };
-    const adapter = await getCurrentAdapter(ctx?.context.adapter as DBAdapter);
-    if (!adapter) {
-      throw new Error(
-        'UserRegistered: no Better Auth adapter to write the outbox',
-      );
-    }
-
-    const { id, ...message } = toOutboxMessage(
-      AUTH_EVENTS_TOPIC,
-      toUserRegisteredEvent(data),
+    await this.outbox.add(
+      toOutboxMessage(AUTH_EVENTS_TOPIC, toUserRegisteredEvent(data)),
+      ctx?.context.adapter,
     );
-    await adapter.create({
-      model: OUTBOX_MODEL,
-      data: { id, ...message, createdAt: new Date() },
-      forceAllowId: true,
-    });
     return { data };
   }
 }

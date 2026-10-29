@@ -2,7 +2,7 @@ import { betterAuth } from 'better-auth';
 import { jwt } from 'better-auth/plugins/jwt';
 import { Pool } from 'pg';
 import { config } from './config.js';
-import { outboxPlugin } from './events/outbox.plugin.js';
+import { outboxPlugin } from './database/outbox.plugin.js';
 
 const { clientId: googleClientId, clientSecret: googleClientSecret } =
   config.google;
@@ -41,7 +41,7 @@ export const auth = betterAuth({
         }),
       },
     }),
-    // `outbox` table for UserRegistered (see events/user-registered.hook.ts).
+    // `outbox` table for UserRegistered (see database/repositories/outbox-messages.repository.ts).
     outboxPlugin(),
   ],
   // Populated at runtime by @DatabaseHook() providers (see events/user-registered.hook.ts).
