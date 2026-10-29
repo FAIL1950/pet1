@@ -1,25 +1,11 @@
 import { BOARD_CREATED, BOARD_EVENTS_TOPIC } from '@app/contracts';
-import type { AuthUser, KafkaProducerService } from '@app/common';
-import type { Repository } from 'typeorm';
-import type { Board } from '../database/entities/board.entity.js';
+import type { AuthUser } from '@app/common';
+import type { DataSource } from 'typeorm';
+import { BoardRole } from '../database/entities/board-member.entity.js';
 import {
   BoardCommandsService,
-  PROJECTION_POLL_INTERVAL_MS,
-  PROJECTION_WAIT_TIMEOUT_MS,
   toBoardCreatedEvent,
 } from './board-commands.service.js';
-
-vi.mock('@app/common', () => ({
-  KafkaProducerService: class {},
-}));
-
-// Polling sleeps advance a fake clock instead of waiting.
-let now = 0;
-vi.mock('node:timers/promises', () => ({
-  setTimeout: vi.fn(async (ms: number) => {
-    now += ms;
-  }),
-}));
 
 const user: AuthUser = {
   id: 'user-1',
@@ -30,13 +16,58 @@ const user: AuthUser = {
 
 const input = { title: 'Sprint 1', description: null };
 
-function setup(findOneBy: (where: { id: string }) => Promise<Board | null>) {
-  const publish = vi.fn().mockResolvedValue(undefined);
-  const service = new BoardCommandsService(
-    { publish } as unknown as KafkaProducerService,
-    { findOneBy: vi.fn(findOneBy) } as unknown as Repository<Board>,
+interface Write {
+  entity: string;
+  values: Record<string, unknown>;
+  orIgnore?: boolean;
+}
+
+function setup() {
+  const writes: Write[] = [];
+  const createdAt = new Date('2026-01-01T00:00:00.000Z');
+  const manager = {
+    createQueryBuilder: () => {
+      const write: Write = { entity: '', values: {} };
+      const builder = {
+        insert: () => builder,
+        into: (entity: { name: string }) => {
+          write.entity = entity.name;
+          return builder;
+        },
+        values: (values: Record<string, unknown>) => {
+          write.values = values;
+          return builder;
+        },
+        orIgnore: () => {
+          write.orIgnore = true;
+          return builder;
+        },
+        execute: async () => {
+          writes.push(write);
+        },
+      };
+      return builder;
+    },
+    create: (_entity: { name: string }, values: Record<string, unknown>) =>
+      values,
+    save: async (values: Record<string, unknown>) => {
+      writes.push({ entity: 'Board', values });
+      return { ...values, createdAt };
+    },
+    insert: async (
+      entity: { name: string },
+      values: Record<string, unknown>,
+    ) => {
+      writes.push({ entity: entity.name, values });
+    },
+  };
+  const transaction = vi.fn((work: (m: typeof manager) => Promise<unknown>) =>
+    work(manager),
   );
-  return { service, publish };
+  const service = new BoardCommandsService({
+    transaction,
+  } as unknown as DataSource);
+  return { service, writes, transaction, createdAt };
 }
 
 describe('toBoardCreatedEvent', () => {
@@ -64,49 +95,48 @@ describe('toBoardCreatedEvent', () => {
 });
 
 describe('BoardCommandsService.createBoard', () => {
-  beforeEach(() => {
-    now = 0;
-    vi.spyOn(Date, 'now').mockImplementation(() => now);
-  });
+  it('writes the board, OWNER membership and BoardCreated outbox row in one transaction', async () => {
+    const { service, writes, transaction, createdAt } = setup();
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+    const board = await service.createBoard(user, input);
 
-  it('publishes BoardCreated to board.events and returns the projected board', async () => {
-    const board = { id: 'projected' } as Board;
-    const { service, publish } = setup(async () => board);
-
-    const result = await service.createBoard(user, input);
-
-    expect(publish).toHaveBeenCalledWith(
-      BOARD_EVENTS_TOPIC,
-      expect.objectContaining({ eventType: BOARD_CREATED }),
-    );
-    const event = publish.mock.calls[0][1];
-    expect(event.aggregateId).toBe(event.payload.boardId);
-    expect(result).toEqual({ status: 'created', board });
-  });
-
-  it('waits for the projection to catch up', async () => {
-    const board = { id: 'projected' } as Board;
-    let calls = 0;
-    const { service } = setup(async () => (++calls < 3 ? null : board));
-
-    await expect(service.createBoard(user, input)).resolves.toEqual({
-      status: 'created',
-      board,
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(writes.map((w) => w.entity)).toEqual([
+      'User',
+      'Board',
+      'BoardMember',
+      'OutboxMessage',
+    ]);
+    expect(writes[0]).toMatchObject({
+      values: { id: 'user-1', email: 'a@example.com' },
+      orIgnore: true,
     });
-    expect(now).toBe(2 * PROJECTION_POLL_INTERVAL_MS);
-  });
 
-  it('reports pending with the board id when the projection is too slow', async () => {
-    const { service, publish } = setup(async () => null);
+    const boardId = board.id;
+    expect(board).toMatchObject({
+      title: 'Sprint 1',
+      description: null,
+      version: 1,
+      createdAt,
+    });
+    expect(writes[2].values).toEqual({
+      boardId,
+      userId: 'user-1',
+      role: BoardRole.OWNER,
+    });
 
-    const result = await service.createBoard(user, input);
-
-    const boardId = publish.mock.calls[0][1].payload.boardId;
-    expect(result).toEqual({ status: 'pending', boardId });
-    expect(now).toBeGreaterThanOrEqual(PROJECTION_WAIT_TIMEOUT_MS);
+    const outbox = writes[3].values;
+    expect(outbox).toMatchObject({
+      topic: BOARD_EVENTS_TOPIC,
+      key: boardId,
+      eventType: BOARD_CREATED,
+    });
+    const event = JSON.parse(outbox.event as string);
+    expect(outbox.id).toBe(event.eventId);
+    expect(event).toMatchObject({
+      aggregateId: boardId,
+      version: 1,
+      payload: { boardId, title: 'Sprint 1' },
+    });
   });
 });

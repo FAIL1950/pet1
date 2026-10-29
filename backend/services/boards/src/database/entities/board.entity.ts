@@ -18,9 +18,10 @@ export class Board {
   description: string | null;
 
   /**
-   * Version of the last board event applied to this projection. Events with
-   * `version <= this` are duplicates and get skipped; commands carry an expected
-   * version for optimistic concurrency.
+   * Incremented by every board command in the same transaction as the change; the event
+   * written to the outbox carries the new value. Commands carry an expected version for
+   * optimistic concurrency (`UPDATE ... WHERE version = $expected`); consumers of
+   * `board.events` use it to skip duplicates.
    */
   @Column({ type: 'int' })
   version: number;

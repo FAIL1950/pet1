@@ -17,7 +17,7 @@ The backend must be implemented **exclusively in TypeScript** using:
 
 The backend follows a **microservice architecture**.
 
-Kafka is the **source of truth for domain changes** related to collaborative boards. PostgreSQL is used as a persistent/readable projection and application data store, but board mutations must be represented by Kafka events.
+PostgreSQL is the **source of truth** for each service's data. Every domain change is also published as an event to Kafka through a **transactional outbox** (the state change and its event commit together), so other services and the real-time layer can react to it.
 
 ---
 
@@ -32,7 +32,7 @@ The backend is responsible for:
 - Board access management.
 - Board operations.
 - Publishing and consuming domain events through Kafka.
-- Maintaining PostgreSQL projections.
+- Maintaining local PostgreSQL projections of other services' data (e.g. users in the boards DB).
 - Providing APIs for the frontend.
 - Providing real-time board updates.
 - Running in Kubernetes through Skaffold.
@@ -78,9 +78,9 @@ There is no separate Users Service: user identity and profile are owned by the A
 Responsibilities:
 
 - Board access.
-- Board commands.
-- Board domain events.
-- Board projections.
+- Board commands (board state in its own PostgreSQL DB is authoritative).
+- Board domain events, published through the outbox.
+- Local `users` projection fed by `auth.events`.
 - Real-time board updates.
 
 ### Notifications Service
@@ -145,11 +145,11 @@ Failures in email delivery must not invalidate an already successful registratio
 
 ---
 
-## 6. Kafka as Source of Truth
+## 6. PostgreSQL as Source of Truth, Kafka for Propagation
 
-Kafka is the authoritative event log for board domain changes.
+Each service's PostgreSQL database is authoritative for the data it owns. Kafka carries domain events to other services; it is not the system of record.
 
-Board mutations must be represented as events.
+Board mutations must still be represented as events.
 
 Examples:
 
@@ -168,28 +168,29 @@ CardMoved
 CardUpdated
 ```
 
-A simplified event flow:
+A command is validated against the current state and applied in **one PostgreSQL transaction** that also writes its event to the service's `outbox` table. A relay in the service publishes outbox rows to Kafka afterwards (see §20).
 
 ```text
 Frontend
    |
    | HTTP command
    v
-Boards Service
-   |
-   | validate command
-   v
-Kafka
-   |
-   | domain event
-   +----------------------+
-   |                      |
-   v                      v
-PostgreSQL Projection   Real-time Gateway
-   |                      |
-   v                      v
-Query API              Connected clients
+Boards Service ── one transaction ──> PostgreSQL (board tables + outbox)
+                                          |
+                                          | outbox relay
+                                          v
+                                        Kafka (board.events)
+                                          |
+                          +---------------+---------------+
+                          |                               |
+                          v                               v
+                  Real-time Gateway                 Other services
+                          |                         (notifications, ...)
+                          v
+                  Connected clients
 ```
+
+Because validation and the write share a transaction, concurrent commands are serialized by the database (row locks, unique constraints, `boards.version` for optimistic concurrency) instead of racing against a lagging projection.
 
 The frontend must never write directly to PostgreSQL or Kafka.
 
@@ -253,7 +254,7 @@ Use PostgreSQL as the relational database.
 
 Use TypeORM for database access.
 
-PostgreSQL should contain projections/queryable state such as:
+PostgreSQL holds each service's authoritative state, for example:
 
 ```text
 users
@@ -267,17 +268,14 @@ The exact schema may evolve. Current schema (TypeORM entities + migrations under
 
 - **boards DB**
   - `users` — local projection of auth users fed by `UserRegistered` (`id` = Better Auth id, `email`, `name`, `image` avatar URL). The auth DB is not reachable from other services (database-per-service), so members reference this table.
-  - `boards` — `id`, `title`, `description`, `version` (last applied event version).
+  - `boards` — `id`, `title`, `description`, `version` (incremented by every board command; the event carries the new value).
   - `board_members` — `(board_id, user_id)` PK, `role` (`OWNER`/`EDITOR`/`VIEWER`); a partial unique index allows exactly one `OWNER` per board.
+  - `outbox` — events waiting for the relay (`id` = `eventId`, `topic`, `key`, `event_type`, `event`, `created_at`).
   - `columns`, `cards` — ordered by `position`, a fractional-index string key (`text COLLATE "C"`, generated with `fractional-indexing`): a move rewrites only the moved item's key, so it is one row update and one event, with no renumbering.
 - **notifications DB** — `email_deliveries` (`source_event_id`, `kind`, `recipient`, `status`, `attempts`, `last_error`, `sent_at`).
-- **auth DB** — owned by Better Auth (`user`, `session`, `account`, `verification`).
+- **auth DB** — owned by Better Auth (`user`, `session`, `account`, `verification`, `jwks`), plus `outbox` registered through a Better Auth plugin.
 
-Board membership: the creator becomes `OWNER` on `BoardCreated`; others are added by email (looked up in the local `users` projection) through `BoardMemberAdded` / `BoardMemberRoleChanged` / `BoardMemberRemoved` events, which only the `OWNER` may trigger. Permissions are checked in the command handler against the projection (VIEWER reads; EDITOR also edits columns/cards; OWNER also manages members and the board itself). Consistency window: the check reads the projection, so a just-revoked role may still pass for the short time until the projection catches up.
-
-The database must not be considered the authoritative event history for board mutations.
-
-The board projection can be rebuilt from Kafka events.
+Board membership: the creator becomes `OWNER` when the board is created; others are added by email (looked up in the local `users` projection) through `BoardMemberAdded` / `BoardMemberRoleChanged` / `BoardMemberRemoved` events, which only the `OWNER` may trigger. Permissions are checked in the command handler inside the command's transaction (VIEWER reads; EDITOR also edits columns/cards; OWNER also manages members and the board itself), so a revoked role takes effect immediately.
 
 ---
 
@@ -424,12 +422,10 @@ Client A
 Boards API
    |
    v
-Kafka
+PostgreSQL (cards + outbox, one transaction)
    |
-   v
-CardMoved
-   |
-   +------> PostgreSQL projection
+   v  outbox relay
+Kafka: CardMoved
    |
    +------> Real-time gateway
                     |
@@ -444,7 +440,7 @@ Clients subscribed to a board must receive relevant board events.
 
 The real-time layer must not become the source of truth.
 
-After reconnecting, a client must be able to retrieve the current board projection.
+After reconnecting, a client must be able to retrieve the current board state from the Boards API.
 
 ---
 
@@ -490,7 +486,7 @@ Use `eventId` and/or an aggregate version to detect already processed events.
 
 Current approach — no generic `processed_events` table; each consumer dedupes by a natural key:
 
-- Board events → the board projection: `boards.version` stores the version of the last applied event; an event with `version <= boards.version` is a duplicate and is skipped.
+- Board events (`board.events`) → consumers such as the real-time gateway: events of one board carry increasing `version`s; a consumer that keeps the last seen version per board skips `version <= last`.
 - `UserRegistered` → the boards `users` projection: upsert by user id (re-applying is a no-op).
 - Notifications: `email_deliveries` has a unique `(source_event_id, kind)` key, so a redelivered event cannot send a second email.
 
@@ -501,9 +497,9 @@ Add a `processed_events (event_id, consumer, processed_at)` table only for a con
 ### Implemented event contracts (`packages/contracts`)
 
 - `UserRegistered` → `auth.events`, key = userId: `{ userId, email, name, image, emailVerified, createdAt }`.
-- `BoardCreated` → `board.events`, key = boardId, version 1: `{ boardId, title, description, owner: { userId, email, name, image } }`. The owner snapshot lets the boards projection satisfy its `users` FK even before `UserRegistered` is consumed or after it ages out of `auth.events`.
+- `BoardCreated` → `board.events`, key = boardId, version 1: `{ boardId, title, description, owner: { userId, email, name, image } }`. The owner snapshot lets consumers know the owner without the auth DB.
 
-`POST /api/boards` publishes `BoardCreated` and waits (up to 5 s) for the boards projection to apply it: `201` with the board, or `202 { boardId }` if it is still catching up.
+`POST /api/boards` writes the board, the OWNER membership and the `BoardCreated` outbox row in one transaction and answers `201` with the board; the relay publishes the event shortly after.
 
 ---
 
@@ -527,43 +523,26 @@ Future incompatible event changes should introduce a new version rather than sil
 
 ## 19. Source of Truth and Rebuilding
 
-The board projection in PostgreSQL must be rebuildable.
+Each service's PostgreSQL database is the source of truth for the data it owns and is protected by regular database backups, not by replaying Kafka.
 
-Conceptually:
-
-```text
-Kafka event log
-      |
-      v
-Board projection consumer
-      |
-      v
-PostgreSQL
-```
-
-If the projection is lost or corrupted:
-
-```text
-Kafka
-  |
-  v
-Replay board events
-  |
-  v
-Rebuild PostgreSQL projection
-```
-
-This requirement is fundamental to the architecture.
+Local projections of another service's data are rebuildable from that service's events. Example: the boards `users` table is fed by `auth.events`; a new consumer group (`fromBeginning`) replays the topic into an empty table. This requires `auth.events` to retain user events (or a compacted topic keyed by user id).
 
 ---
 
 ## 20. Transactional Consistency
 
-Avoid distributed transactions between PostgreSQL and Kafka where possible.
+Do not use distributed transactions between PostgreSQL and Kafka.
 
-When PostgreSQL persistence and Kafka publication need atomicity, use an appropriate event-driven consistency mechanism, such as a transactional/outbox-style approach where it does not conflict with Kafka being the authoritative event log.
+Every service that publishes events uses a **transactional outbox**:
 
-The implementation must explicitly document any unavoidable consistency window.
+1. The state change and its event (serialized `DomainEvent`) are written to the service's `outbox` table in the same transaction.
+2. `OutboxRelay` (`@app/common`) polls `outbox` in `created_at` order, publishes the rows to Kafka (key = aggregate id) and deletes them in one transaction. A Postgres advisory lock lets only one relay per database run at a time, so per-key order holds with several replicas.
+3. A crash between the Kafka send and the commit publishes the rows again: delivery is at least once and every consumer must be idempotent (§17).
+
+Consistency windows:
+
+- Events reach Kafka shortly after the commit (relay poll interval; longer while Kafka is unavailable — rows wait in `outbox`).
+- Auth: Better Auth creates the user inside its own transaction and runs `create.before` database hooks in it; the `UserRegistered` outbox row is written from such a hook. If Better Auth ever created a user outside a transaction, the row would still be written first, but not atomically with the user.
 
 ---
 
@@ -799,15 +778,15 @@ The backend is considered complete when:
 5. PostgreSQL is used with TypeORM.
 6. Registration produces a user-registration event.
 7. A notification service consumes the registration event and sends an email.
-8. Board mutations are represented as Kafka events.
-9. Kafka is the authoritative event log for board changes.
-10. PostgreSQL contains rebuildable board projections.
+8. Board mutations are published as Kafka events through a transactional outbox.
+9. PostgreSQL is the source of truth for board state.
+10. Local projections of other services' data (e.g. users) are rebuildable from Kafka events.
 11. Duplicate Kafka events can be processed safely.
 12. Board event ordering is handled using an appropriate Kafka partitioning strategy.
 13. Users can create, delete, and move board items.
 14. Board authorization is enforced server-side.
 15. Real-time board updates are delivered to connected clients.
-16. The system can recover/rebuild board projections from Kafka events.
+16. No event is lost when Kafka is temporarily unavailable (the outbox keeps it).
 17. Services can run in Kubernetes.
 18. Skaffold can build and deploy the development environment.
 19. Secrets are managed outside source code.

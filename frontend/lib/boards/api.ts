@@ -3,18 +3,13 @@ import type { CreateBoardValues } from "./schemas";
 
 export type BoardRole = "OWNER" | "EDITOR" | "VIEWER";
 
-/** `201 Created` from `POST /api/boards`: the board is already in the projection. */
+/** `201 Created` from `POST /api/boards`. */
 export type BoardResponse = {
   id: string;
   title: string;
   description: string | null;
   role: BoardRole;
   createdAt: string;
-};
-
-/** `202 Accepted`: the BoardCreated event is published, the projection is still catching up. */
-export type BoardPendingResponse = {
-  boardId: string;
 };
 
 export type BoardsApiErrorCode = "unauthorized" | "validation" | "network" | "generic";
@@ -66,9 +61,6 @@ export async function createBoard(values: CreateBoardValues): Promise<{ boardId:
   if (res.status === 201) {
     const board = (await res.json()) as BoardResponse;
     return { boardId: board.id };
-  }
-  if (res.status === 202) {
-    return (await res.json()) as BoardPendingResponse;
   }
   throw new BoardsApiError(errorCodeForStatus(res.status));
 }

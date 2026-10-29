@@ -12,7 +12,7 @@ The frontend must be implemented **exclusively in TypeScript** using:
 
 The application communicates with a backend microservice architecture through HTTP APIs and real-time updates where required.
 
-The backend uses Kafka as the source of truth for board mutations. The frontend must never treat local UI state or a direct database query as the authoritative state.
+The backend keeps board state in PostgreSQL (the source of truth) and publishes every change to Kafka through a transactional outbox. The frontend must never treat local UI state or a direct database query as the authoritative state.
 
 ---
 

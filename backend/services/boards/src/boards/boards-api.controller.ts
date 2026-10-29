@@ -1,18 +1,10 @@
-import {
-  Body,
-  Controller,
-  HttpStatus,
-  Post,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import {
   CurrentUser,
   JwtAuthGuard,
   ZodValidationPipe,
   type AuthUser,
 } from '@app/common';
-import type { Response } from 'express';
 import { BoardRole } from '../database/entities/board-member.entity.js';
 import { BoardCommandsService } from './board-commands.service.js';
 import {
@@ -28,31 +20,19 @@ export interface BoardResponse {
   createdAt: string;
 }
 
-export interface BoardPendingResponse {
-  boardId: string;
-}
-
 // The ingress forwards `/api/boards` unchanged, hence the full prefix here.
 @Controller('api/boards')
 @UseGuards(JwtAuthGuard)
 export class BoardsApiController {
   constructor(private readonly commands: BoardCommandsService) {}
 
-  /** 201 with the board once projected; 202 with its id if the projection is still catching up. */
+  /** 201 with the created board; the caller becomes its OWNER. */
   @Post()
   async create(
     @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(createBoardSchema)) input: CreateBoardInput,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<BoardResponse | BoardPendingResponse> {
-    const result = await this.commands.createBoard(user, input);
-    if (result.status === 'pending') {
-      res.status(HttpStatus.ACCEPTED);
-      return { boardId: result.boardId };
-    }
-
-    const { board } = result;
-    res.status(HttpStatus.CREATED);
+  ): Promise<BoardResponse> {
+    const board = await this.commands.createBoard(user, input);
     return {
       id: board.id,
       title: board.title,

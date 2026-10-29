@@ -5,12 +5,16 @@ import {
   OnApplicationShutdown,
   OnModuleInit,
 } from '@nestjs/common';
-import type { DomainEvent } from '@app/contracts';
-import { Kafka, type Producer } from 'kafkajs';
+import { Kafka, type Message, type Producer } from 'kafkajs';
 
 export interface KafkaOptions {
   clientId: string;
   brokers: string[];
+}
+
+export interface KafkaTopicMessages {
+  topic: string;
+  messages: Message[];
 }
 
 /** Provide with `{ provide: KAFKA_OPTIONS, useValue: config.kafka }` in each service module. */
@@ -39,17 +43,8 @@ export class KafkaProducerService
     await this.producer.disconnect();
   }
 
-  /** Publishes an event keyed by its aggregate id, so events of one aggregate stay ordered. */
-  async publish<T>(topic: string, event: DomainEvent<T>): Promise<void> {
-    await this.producer.send({
-      topic,
-      messages: [
-        {
-          key: event.aggregateId,
-          value: JSON.stringify(event),
-          headers: { eventType: event.eventType },
-        },
-      ],
-    });
+  /** Sends already serialized messages; order is kept per topic partition. */
+  async sendBatch(topicMessages: KafkaTopicMessages[]): Promise<void> {
+    await this.producer.sendBatch({ topicMessages });
   }
 }

@@ -2,13 +2,17 @@ import { betterAuth } from 'better-auth';
 import { jwt } from 'better-auth/plugins/jwt';
 import { Pool } from 'pg';
 import { config } from './config.js';
+import { outboxPlugin } from './events/outbox.plugin.js';
 
 const { clientId: googleClientId, clientSecret: googleClientSecret } =
   config.google;
 
+/** Shared with the outbox relay (auth.module.ts). */
+export const pool = new Pool({ connectionString: config.databaseUrl });
+
 export const auth = betterAuth({
   // Built-in Kysely adapter, so `getMigrations` (see main.ts) can manage the schema.
-  database: new Pool({ connectionString: config.databaseUrl }),
+  database: pool,
   basePath: '/api/auth',
   baseURL: config.betterAuth.url,
   secret: config.betterAuth.secret,
@@ -37,6 +41,8 @@ export const auth = betterAuth({
         }),
       },
     }),
+    // `outbox` table for UserRegistered (see events/user-registered.hook.ts).
+    outboxPlugin(),
   ],
   // Populated at runtime by @DatabaseHook() providers (see events/user-registered.hook.ts).
   databaseHooks: {},
