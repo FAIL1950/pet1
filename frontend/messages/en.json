@@ -64,8 +64,29 @@
       "passwordTooShort": "Password is too short",
       "passwordTooLong": "Password is too long",
       "network": "Couldn't reach the server. Check your connection and try again.",
-      "generic": "Something went wrong. Please try again."
-    }
+      "generic": "Something went wrong. Please try again.",
+      "emailNotVerified": "Your email isn't verified yet. We've sent you a new link — check your inbox.",
+      "emailAlreadyVerified": "This email is already verified — just sign in."
+    },
+    "resendVerification": "Resend the email"
+  },
+  "CheckEmailPage": {
+    "title": "Check your email",
+    "sentTo": "We've sent a verification link to <strong>{email}</strong>.",
+    "sent": "We've sent you a verification link.",
+    "hint": "Open it to finish signing up. The link is valid for 24 hours; if there's no email, check the Spam folder.",
+    "resend": "Send the email again",
+    "resendIn": "Send again in {seconds} s",
+    "resent": "A new email is on its way.",
+    "signIn": "Back to sign in"
+  },
+  "VerifiedPage": {
+    "title": "Email verified",
+    "text": "Thanks! Your email is confirmed and you're signed in.",
+    "continue": "Continue",
+    "failedTitle": "The link didn't work",
+    "failedText": "It has expired or was already used. Sign in — we'll send you a new one.",
+    "signIn": "Sign in"
   },
   "Form": {
     "showPassword": "Show password",

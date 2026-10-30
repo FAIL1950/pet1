@@ -8,6 +8,8 @@ import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import { authClient } from "@/lib/auth/client";
+import { clearAccessToken } from "@/lib/auth/token";
+import { checkEmailUrl, verifiedUrl } from "@/lib/auth/redirect";
 import { useAfterAuthRedirect } from "@/lib/auth/useAfterAuthRedirect";
 import { authErrorKey, type AuthErrorKey } from "@/lib/auth/errors";
 import { MIN_PASSWORD_LENGTH, signUpSchema, type SignUpValues } from "@/lib/auth/schemas";
@@ -37,13 +39,18 @@ export default function SignUpForm() {
         name,
         email,
         password,
-        callbackURL: afterAuthRedirect,
+        // The verification link leads here; Better Auth signs the user in on the way.
+        callbackURL: verifiedUrl(afterAuthRedirect),
       });
       if (error) {
         setServerError(authErrorKey(error));
         return;
       }
-      router.replace(afterAuthRedirect);
+      // The new account has no session until its email is verified (requireEmailVerification);
+      // drop a leftover session of another account, so the user isn't still signed in as them.
+      await authClient.signOut().catch(() => undefined);
+      clearAccessToken();
+      router.replace(checkEmailUrl(email, afterAuthRedirect));
       router.refresh();
     } catch {
       setServerError(authErrorKey(null));

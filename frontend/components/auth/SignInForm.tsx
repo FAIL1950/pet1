@@ -1,13 +1,16 @@
 "use client";
 
+import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import Link from "@mui/material/Link";
 import Stack from "@mui/material/Stack";
 import { authClient } from "@/lib/auth/client";
+import { checkEmailUrl } from "@/lib/auth/redirect";
 import { useAfterAuthRedirect } from "@/lib/auth/useAfterAuthRedirect";
 import { authErrorKey, type AuthErrorKey } from "@/lib/auth/errors";
 import { signInSchema, type SignInValues } from "@/lib/auth/schemas";
@@ -22,6 +25,7 @@ export default function SignInForm() {
     control,
     handleSubmit,
     setError,
+    getValues,
     formState: { errors, isSubmitting, isSubmitSuccessful },
   } = useForm<SignInValues>({
     resolver: zodResolver(signInSchema),
@@ -36,6 +40,9 @@ export default function SignInForm() {
       const { error } = await authClient.signIn.email({
         email,
         password,
+        // Better Auth uses this both as the redirect after a successful sign-in (the client
+        // follows it) and in the link it emails when the address isn't verified yet — so it must
+        // be the real destination, not /auth/verified.
         callbackURL: afterAuthRedirect,
       });
       if (error) {
@@ -53,7 +60,23 @@ export default function SignInForm() {
 
   return (
     <Stack component="form" noValidate spacing={2} onSubmit={handleSubmit(onSubmit)}>
-      {serverError && <Alert severity="error">{t(`errors.${serverError}`)}</Alert>}
+      {serverError && (
+        <Alert severity={serverError === "emailNotVerified" ? "warning" : "error"}>
+          {t(`errors.${serverError}`)}
+          {serverError === "emailNotVerified" && (
+            <>
+              {" "}
+              <Link
+                component={NextLink}
+                href={checkEmailUrl(getValues("email"), afterAuthRedirect)}
+                color="inherit"
+              >
+                {t("resendVerification")}
+              </Link>
+            </>
+          )}
+        </Alert>
+      )}
       <FormTextField
         control={control}
         name="email"

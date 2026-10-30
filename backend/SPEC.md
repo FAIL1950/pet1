@@ -143,6 +143,8 @@ Email sending should support retries.
 
 Failures in email delivery must not invalidate an already successful registration.
 
+Implemented: email/password sign-up requires a verified email. Better Auth's `sendVerificationEmail` writes `EmailVerificationRequested { userId, email, name, url }` to the auth outbox (→ `auth.events`); the Notifications Service (several replicas in one consumer group) records the delivery in `email_deliveries` (deduped by `(source_event_id, kind)`), sends it over SMTP (Gmail) and retries failures with backoff (1 min … 3 h, then `FAILED`) from a lease-based retry worker (`FOR UPDATE SKIP LOCKED`).
+
 ---
 
 ## 6. PostgreSQL as Source of Truth, Kafka for Propagation

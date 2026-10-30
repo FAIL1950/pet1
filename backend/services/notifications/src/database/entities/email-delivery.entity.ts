@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Unique,
 } from 'typeorm';
@@ -18,6 +19,8 @@ export enum EmailDeliveryStatus {
  */
 @Entity({ name: 'email_deliveries' })
 @Unique('UQ_email_deliveries_source_event_kind', ['sourceEventId', 'kind'])
+// Retry worker: due PENDING rows.
+@Index('IDX_email_deliveries_due', ['status', 'nextAttemptAt'])
 export class EmailDelivery {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -46,6 +49,17 @@ export class EmailDelivery {
 
   @Column({ name: 'last_error', type: 'text', nullable: true })
   lastError: string | null;
+
+  /** Template data (e.g. `name`, `url`); cleared once sent, so a link's token isn't kept. */
+  @Column({ type: 'jsonb', default: {} })
+  payload: Record<string, string>;
+
+  /**
+   * When the retry worker may (re)send a PENDING row. Set at claim time as a lease, so a row
+   * whose sender crashed mid-way is picked up again instead of being lost.
+   */
+  @Column({ name: 'next_attempt_at', type: 'timestamptz', nullable: true })
+  nextAttemptAt: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

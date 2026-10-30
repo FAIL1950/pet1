@@ -1,5 +1,7 @@
 export type AuthErrorKey =
   | "invalidCredentials"
+  | "emailNotVerified"
+  | "emailAlreadyVerified"
   | "userExists"
   | "invalidEmail"
   | "passwordTooShort"
@@ -14,6 +16,10 @@ type AuthClientError = {
 
 const ERROR_CODE_KEYS: Record<string, AuthErrorKey> = {
   INVALID_EMAIL_OR_PASSWORD: "invalidCredentials",
+  // Sign-in with an unverified email; Better Auth has just sent a new link (sendOnSignIn).
+  EMAIL_NOT_VERIFIED: "emailNotVerified",
+  // Resend for an address that is already verified.
+  EMAIL_ALREADY_VERIFIED: "emailAlreadyVerified",
   USER_ALREADY_EXISTS: "userExists",
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "userExists",
   INVALID_EMAIL: "invalidEmail",

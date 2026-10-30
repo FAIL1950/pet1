@@ -18,7 +18,9 @@ metadata:
     app.kubernetes.io/name: notifications
     app.kubernetes.io/part-of: pet-1
 spec:
-  replicas: 1
+  # Several replicas share auth.events through the consumer group (auth.events has 3 partitions,
+  # so up to 3 replicas get work); the retry worker in each replica leases rows with SKIP LOCKED.
+  replicas: 2
   selector:
     matchLabels:
       app.kubernetes.io/name: notifications
@@ -44,10 +46,17 @@ spec:
               value: kafka:9092
             - name: KAFKA_CLIENT_ID
               value: notifications
+            - name: KAFKA_GROUP_ID
+              value: notifications
           envFrom:
             # DATABASE_URL; migrations run on boot (TypeOrmModule migrationsRun).
             - secretRef:
                 name: notifications-secrets
+            # SMTP_HOST/PORT/USER/PASS, MAIL_FROM from the gitignored k8s/smtp.secret.yaml (copy
+            # k8s/smtp.secret.yaml.example). Optional: without it emails wait in email_deliveries.
+            - secretRef:
+                name: smtp
+                optional: true
           resources:
             requests:
               cpu: 100m

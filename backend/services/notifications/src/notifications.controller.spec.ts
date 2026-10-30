@@ -11,12 +11,16 @@ describe('NotificationsController', () => {
       providers: [NotificationsService],
     }).compile();
 
-    notificationsController = app.get<NotificationsController>(NotificationsController);
+    notificationsController = app.get<NotificationsController>(
+      NotificationsController,
+    );
   });
 
   describe('root', () => {
     it('should return "Notifications service is running"', () => {
-      expect(notificationsController.getHello()).toBe('Notifications service is running');
+      expect(notificationsController.getHello()).toBe(
+        'Notifications service is running',
+      );
     });
   });
 });
